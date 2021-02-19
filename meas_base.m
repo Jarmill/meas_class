@@ -20,10 +20,7 @@ classdef meas_base < handle
         %% constructor
         function obj = meas_base(vars, supp)
             %MEAS_BASE Construct a measure
-            %   Detailed explanation goes here
-%             obj.Property1 = inputArg1 + inputArg2;
-
-            
+            %include the variables and the support         
 
             if isfield(vars, 'supp')
                 supp = vars.supp;

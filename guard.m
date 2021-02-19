@@ -50,6 +50,8 @@ classdef guard < meas_base
                                 [obj.vars.t; obj.vars.x]);
             obj.reset = subs(reset_old, [vars_old.t; vars_old.x], ...
                 [obj.vars.t; obj.vars.x]);
+            
+            obj.meas = meas([obj.vars.t; obj.vars.x]);
         end
         
         function con = zeno_con(obj)

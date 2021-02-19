@@ -6,9 +6,9 @@ classdef peak_manager_hy < handle
         locations;
         guards;
         
-        liou_con_length; %length of liouville constraints for indexing
+        liou_con_len; %length of liouville constraints for indexing
         
-        solver = 'mosek';
+        solver;
     end
     
     methods
@@ -23,7 +23,17 @@ classdef peak_manager_hy < handle
                 obj.locations = locations_in;
             end
             
-            obj.guards = guards_in;                        
+            if ~iscell(guards_in)
+                obj.guards = {guards_in};                        
+            else
+                obj.guards = guards_in;                        
+            end
+            
+            %a pseudoglobal keeping track of the length of liouville
+            %constraints between locations
+            obj.liou_con_len = [];
+            
+            obj.solver = 'mosek';
         end
         
         function [objective, mom_con, supp_con] = peak_cons(obj,d)
@@ -87,8 +97,15 @@ classdef peak_manager_hy < handle
             else
                 mass_con = (mass_init_sum == 1);
             end
+            
+            loc_con = [];
+            for i = 1:length(liou_con)
+                loc_con = [loc_con; liou_con{i} == 0; obj_con{i}];
+            end
+                
+            
                         
-            mom_con = [liou_con{:}; mass_con; zeno_con];
+            mom_con = [loc_con; mass_con; zeno_con];
 
         end    
     
@@ -97,12 +114,12 @@ classdef peak_manager_hy < handle
             %constraints and objective    
 
             mset('yalmip',true);
-            mset(sdpsettings('solver', options.solver));
+            mset(sdpsettings('solver', obj.solver));
 
-            P = msdp(objective, mom_con, supp_con);
+            P = msdp(max(objective), mom_con, supp_con);
 
             sol = struct;
-            [sol.status,sol.obj_rec, ~,dual_rec]= msol(P);        
+            [sol.status,sol.obj_rec, ~,sol.dual_rec]= msol(P);        
 
         end
 
@@ -111,6 +128,10 @@ classdef peak_manager_hy < handle
             %locations and measures, turn the variables into nonnegative
             %functions along trajectories
             
+            %v: coefficients of liouville
+            %beta: coefficients of cost (if able)
+            %alpha: dual of zeno gaps
+            
         end
         
         function sol = peak(obj, order)
@@ -118,8 +139,8 @@ classdef peak_manager_hy < handle
             
             d = 2*order;
             [objective, mom_con, supp_con] = obj.peak_cons(d);
-            [sol, dual_rec] = obj.peak_solve(objective, mom_con,supp_con);
-            obj.dual_process(dual_rec);
+            sol = obj.peak_solve(objective, mom_con,supp_con);
+            obj.dual_process(sol);
             
         end
         

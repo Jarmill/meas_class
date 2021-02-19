@@ -9,6 +9,8 @@ classdef location < handle
         meas_init;
         meas_term;
         meas_occ;
+%         cost_c;
+        cost_q;
                 
         vars = struct('t', [], 'x', []);
         supp;
@@ -36,8 +38,9 @@ classdef location < handle
             
             obj.meas_init = meas_base(obj.var_def('0', supp0));
             obj.meas_term = meas_base(obj.var_def('p', supp));
-            obj.meas_occ  = meas_base(obj.var_def('occ', supp));
-                                        
+            obj.meas_occ  = meas_base(obj.var_def('occ', supp));                        
+                    
+            obj.cost_q = [];
         end
         
         function [vars_new] = var_def(obj, suffix, supp_old)
@@ -92,10 +95,25 @@ classdef location < handle
                 objective = obj.objective;
             end
             
-            if length(objective) == 1            
-                obj_max = mom(obj.meas_occ.var_sub(obj.vars, objective));
             
-                obj_con = [];
+            obj_subs = obj.meas_term.var_sub(obj.vars, objective);
+            obj_con = [];
+            if length(objective) == 1            
+                obj_max = mom(obj_subs);
+            
+                
+            else
+                q_name = ['q_', num2str(obj.id)];
+                mpol(q_name, 1, 1);
+                q = eval(q_name);
+                muq = meas(q);
+                obj.cost_q = q;
+                
+                obj_max = q;
+                obj_con = [mass(q) == 1; (mom(q) <= mom(obj_subs));];
+%                 for i = 1:length(objective)
+%                     obj_con = [obj_con; mom(q) <= mom(obj_subs)];
+%                 end
             end
             
         end
