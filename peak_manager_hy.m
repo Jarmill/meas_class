@@ -60,15 +60,19 @@ classdef peak_manager_hy < handle
                 %find moment constraints of current location
                 [obj_curr, obj_con_curr] = loc_curr.objective_con(d);
                 
-                objective = objective + obj_curr;
+                if ~isempty(obj_curr)
+                    objective = objective + obj_curr;
+                end
                 obj_con{i} = obj_con_curr;
                 
                 liou_con{i} = loc_curr.liou_con(d);  
                 
-                obj.liou_con_len= length(liou_con{i});
+                obj.liou_con_len(i) = length(liou_con{i});
                 
                 %initial measure has mass 1
-                mass_init_sum = mass_init_sum + loc_curr.meas_init.mass();
+                if ~isempty(loc_curr.meas_init)
+                    mass_init_sum = mass_init_sum + loc_curr.meas_init.mass();
+                end
             end
             
             %process the guards

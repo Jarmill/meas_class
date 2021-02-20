@@ -33,11 +33,16 @@ classdef location < handle
             obj.vars = vars;
             obj.supp = supp;
             
-            obj.f = f;
+            obj.f = f;            
             obj.objective = objective;
             
-            obj.meas_init = meas_base(obj.var_def('0', supp0));
-            obj.meas_term = meas_base(obj.var_def('p', supp));
+            if ~isempty(supp0)
+                obj.meas_init = meas_base(obj.var_def('0', supp0));
+            end
+            
+            if ~isempty(objective)
+                obj.meas_term = meas_base(obj.var_def('p', supp));
+            end
             obj.meas_occ  = meas_base(obj.var_def('occ', supp));                        
                     
             obj.cost_q = [];
@@ -74,8 +79,15 @@ classdef location < handle
                 f = obj.f;
             end
             
-            Ay_init =  obj.meas_init.mom_monom(d);
-            Ay_term = -obj.meas_term.mom_monom(d);
+            Ay_init = 0;
+            if ~isempty(obj.meas_init)
+                Ay_init =  obj.meas_init.mom_monom(d);
+            end
+            
+            Ay_term = 0;
+            if ~isempty(obj.meas_term)
+                Ay_term = -obj.meas_term.mom_monom(d);
+            end
             Ay_occ  =  obj.meas_occ.mom_lie(d, obj.vars, f);
             
             %TODO: Digital dynamics
@@ -84,8 +96,21 @@ classdef location < handle
         end
         
         function supp_con_out = supp_con(obj)
-            supp_con_out = [obj.meas_init.supp;
-                            obj.meas_term.supp;
+            
+            if ~isempty(obj.meas_term)
+                term_supp =  obj.meas_term.supp;
+            else
+                term_supp =  [];
+            end
+            
+            if ~isempty(obj.meas_init)
+                init_supp =  obj.meas_init.supp;
+            else
+                init_supp =  [];
+            end
+            
+            supp_con_out = [init_supp;
+                            term_supp;
                             obj.meas_occ.supp];
         end
         
@@ -96,20 +121,22 @@ classdef location < handle
             end
             
             
-            obj_subs = obj.meas_term.var_sub(obj.vars, objective);
-            obj_con = [];
-            if length(objective) == 1            
-                obj_max = mom(obj_subs);
             
-                
+            obj_con = [];
+            if isempty(objective)
+                obj_max = 0;
+            elseif length(objective) == 1    
+                obj_subs = obj.meas_term.var_sub(obj.vars, objective);
+                obj_max = mom(obj_subs);                            
             else
+                obj_subs = obj.meas_term.var_sub(obj.vars, objective);
                 q_name = ['q_', num2str(obj.id)];
                 mpol(q_name, 1, 1);
                 q = eval(q_name);
                 muq = meas(q);
                 obj.cost_q = q;
                 
-                obj_max = q;
+                obj_max = mom(q);
                 obj_con = [mass(q) == 1; (mom(q) <= mom(obj_subs));];
 %                 for i = 1:length(objective)
 %                     obj_con = [obj_con; mom(q) <= mom(obj_subs)];
