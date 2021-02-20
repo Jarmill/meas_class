@@ -184,25 +184,7 @@ classdef location < handle
             end
         end
 
-        function nn_out = nonneg(obj, t, x)
-            %nonnegative functions at this location
-            
-            if isempty(obj.meas_init)
-                nn_init = [];
-            else
-                nn_init = obj.dual.gamma - obj.dual.v;
-            end
-            
-            if isempty(obj.meas_term)
-                nn_term = [];
-            else
-                nn_term = obj.dual.v - obj.dual.beta'*obj.objective;
-            end
-            
-            nn = [nn_init; -obj.dual.Lv; nn_term];
-            
-            nn_out = eval(nn, obj.get_vars(), [t; x]);                                   
-        end
+
         
         
         %something about processing dual_rec to get nonnegative functions

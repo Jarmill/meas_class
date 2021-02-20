@@ -25,7 +25,11 @@ classdef peak_manager_hy < handle
                 obj.guards = {guards_in};                        
             else
                 obj.guards = guards_in;                        
-            end           
+            end
+            
+            %a pseudoglobal keeping track of the length of liouville
+            %constraints between locations
+            obj.liou_con_len = [];
             
             obj.solver = 'mosek';
         end
@@ -91,15 +95,13 @@ classdef peak_manager_hy < handle
                 mass_con = [];
             else
                 % mass_init_sum == 0 eliminates the constraint when there
-                % is one location. keep it in.
+                % is one location. keep it in
                 mass_con = (mass_init_sum - 1 == 0);
             end
             
             loc_con = [];
             for i = 1:length(liou_con)
-                %TODO: figure out the sign convention for dual variables
-                %should the negative sign be there on liou_con?
-                loc_con = [loc_con; -liou_con{i} == 0; obj_con{i}];
+                loc_con = [loc_con; liou_con{i} == 0; obj_con{i}];
             end
                 
             
@@ -134,40 +136,25 @@ classdef peak_manager_hy < handle
             rec_eq = dual_rec{1};
             rec_ineq = dual_rec{2};
             
-            gamma = rec_eq(end);
-            
-            
             liou_offset = 0;
             cost_con_offset = 0;
             for i = 1:length(obj.locations)
                 
                 loc_curr = obj.locations{i};
                 
-                %liouville
                 nvar_curr = 1 + length(loc_curr.vars.x);
                 liou_len_curr = nchoosek(nvar_curr + 2*order, 2*order);
                 
-                v_coeff = rec_eq((1:liou_len_curr) + liou_offset);
-                                
-                liou_offset = liou_offset + liou_len_curr;
-                
-                %maximin cost duals
-                n_obj = length(loc_curr.objective);
-                if n_obj > 1
-                    beta_curr = rec_ineq((1:n_obj) + cost_con_offset);
-                    cost_con_offset = cost_con_offset + n_obj;
-                elseif isempty(loc_curr.objective)
-                    beta_curr = [];
-                else
-                    beta_curr = 1;
+                v_coeff = 
+                if length(loc_curr.p) > 1
+                    cost_con_offset = cost_con_offset + length(loc_curr.p);
                 end
                 
-                loc_curr.dual_process(order, v_coeff, beta_curr, gamma);
                 
             end
             
             for i = 1:length(obj.guards)
-                obj.guards{i}.zeno_dual = rec_ineq(cost_con_offset + i);
+                
             end
             
             
@@ -179,7 +166,7 @@ classdef peak_manager_hy < handle
             d = 2*order;
             [objective, mom_con, supp_con] = obj.peak_cons(d);
             sol = obj.peak_solve(objective, mom_con,supp_con);
-            obj.dual_process(order, sol.dual_rec);
+            obj.dual_process(sol);
             
         end
         

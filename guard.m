@@ -9,7 +9,8 @@ classdef guard < meas_base
         
         reset = [];
         
-        zeno_cap = 100;
+        zeno_cap = 100; %maximum number of transitions along guard
+        zeno_dual = 0;  %dual variable to zeno constraints
         
     end
     
@@ -73,6 +74,22 @@ classdef guard < meas_base
             %mom_dest: to the destination location
             mom_src = -obj.mom_monom(d);
             mom_dest = obj.reset_push(d);
+            
+        end
+        
+        function nn_out  = nonneg(obj, t, x)
+            %nonnegative dual function at this state transition
+            %x comes from the space of src
+            
+            %check the sign convention
+            %v should decrease along the jump
+            
+            Rx = eval(obj.reset, obj.vars.x, x);
+            
+            vsrc = obj.src.v(t, x);
+            vdest = obj.dest.v(t, Rx);
+            
+            nn_out = vsrc - vdest;
             
         end
         
