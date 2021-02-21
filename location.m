@@ -19,7 +19,7 @@ classdef location < handle
         f;          %dynamics
         objective;
         
-        dual = struct('v', 0, 'Lv', 0, 'beta', 1, 'gamma', 0); 
+        dual = struct('v', 0, 'Lv', 0, 'beta', 1, 'gamma', 0, 'solved', 0); 
         
         %still need to deal with dynamics f
         %and cost p (with maximin)
@@ -157,6 +157,8 @@ classdef location < handle
              %polynomials and interpretable quantities
              
              %numeric quantities
+             obj.dual.solved = 1;
+             
              obj.dual.beta = beta;
              obj.dual.gamma = gamma;
              
@@ -168,12 +170,46 @@ classdef location < handle
             
         end        
         
-        function v_out = v(obj, t, x)
+        function f_out = f_eval(obj, t, x)
+            %evaluate v
+            f_out = eval(obj.f, obj.get_vars(), [t; x]);
+        end
+        
+        function v_out = v_eval(obj, t, x)
+            %evaluate v
             v_out = eval(obj.dual.v, obj.get_vars(), [t; x]);
         end
         
-        function Lv_out = Lv(obj, t, x)
+        function Lv_out = Lv_eval(obj, t, x)
+            %evaluate Lv
             Lv_out = eval(obj.dual.Lv, obj.get_vars(), [t; x]);
+        end
+        
+        function obj_out = obj_eval(obj, t, x)
+            %evaluate objective
+            obj_out = eval(obj.objective, obj.get_vars(), [t; x]);
+        end
+        
+        function supp_out = supp_eval(obj, t, x)
+            %is (t, x) in the support of the guard?
+            supp_out =  all(eval(obj.supp, obj.get_vars(), [t; x]));
+        end
+        
+        function [event_eval, terminal, direction] = supp_event(obj, t, x)
+            %event function for @ode15 or other solver
+            Npt = size(x, 2);
+            event_eval = zeros(1, Npt);
+            for i = 1:Npt
+                xcurr = x(:, i);
+                tcurr = t(:, i);               
+
+                event_eval(i) = obj.supp_eval(tcurr, xcurr);
+            end
+            
+            %stop integrating when the system falls outside support
+            
+            terminal = 1;
+            direction = 0;                        
         end
         
         function cb = cost_beta(obj, t, x)
@@ -216,6 +252,42 @@ classdef location < handle
             %nullstellensatz?'
             e = isempty(obj.supp);
         end
+        
+        %% Sampler
+        function out_sim = sample_traj_loc(obj, t0, x0, Tmax, curr_event)
+            %SAMPLE_TRAJ_LOC Sample a single trajectory starting at (t0, x0) in
+            %this location. Stop when the the trajectory hits a guard or
+            %strays outside the location's support region
+            %
+            %curr_event handles the event detection for leaving the support
+            %region, and guards if enabled.
+            %
+            %OUTPUT:
+            %out_sim is a struct holding the simulation output: time,
+            %state, objective, and nonnegative functions from the dual
+            %solution of SDP.
+            
+            if nargin < 5
+                curr_event = @obj.supp_event;
+            end
+            
+            
+            %simulate the trajectory
+            curr_ode_options = odeset('Events',curr_event, 'RelTol', 1e-7, ...
+                                      'MaxStep', 0.1);
+        
+            out_sim = struct;
+            [out_sim.t, out_sim.x] = ode15s(@obj.f_eval, [t0, Tmax], x0, curr_ode_options);
+            
+            %evaluate nonnegative functions
+            if obj.dual.solved
+                out_sim.nonneg = obj.nonneg(out_sim.t', out_sim.x')';
+            end
+            
+            out_sim.objective = obj.obj_eval(out_sim.t', out_sim.x')';
+            out_sim.id = obj.id;
+        end
+                
     end
 end
 

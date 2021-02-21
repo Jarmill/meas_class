@@ -36,6 +36,11 @@ classdef meas_base < handle
             obj.supp = supp;
         end
         
+        function vars_out = get_vars(obj)
+            %GET_VARS add more variables as necessary
+            vars_out = [obj.vars.t; obj.vars.x];
+        end
+        
         %% monomials        
         function mmon_out = monom(obj, dmin, dmax)
             %MMON monomials of variables of measure

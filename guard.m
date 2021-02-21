@@ -10,7 +10,7 @@ classdef guard < meas_base
         reset = [];
         
         zeno_cap = 100; %maximum number of transitions along guard
-        zeno_dual = 0;  %dual variable to zeno constraints
+        dual = struct('zeno', 0, 'solved', 0);  %dual variable to zeno constraints
         
     end
     
@@ -48,11 +48,11 @@ classdef guard < meas_base
             obj.vars.x = eval(xname);
             
             obj.supp = subs(supp_old, [vars_old.t; vars_old.x], ...
-                                [obj.vars.t; obj.vars.x]);
+                                obj.get_vars());
             obj.reset = subs(reset_old, [vars_old.t; vars_old.x], ...
-                [obj.vars.t; obj.vars.x]);
+                obj.get_vars());
             
-            obj.meas = meas([obj.vars.t; obj.vars.x]);
+            obj.meas = meas(obj.get_vars());
         end
         
         function con = zeno_con(obj)
@@ -64,7 +64,7 @@ classdef guard < meas_base
         function mom_out = reset_push(obj, d)
             v = obj.monom(d);
 %             f_curr = obj.var_sub(vars_old, f_old);
-            Rv = subs(v, [obj.vars.t; obj.vars.x], [obj.vars.t; obj.reset]);
+            Rv = subs(v, obj.get_vars(), [obj.vars.t; obj.reset]);
             mom_out = mom(Rv);
         end
         
@@ -77,6 +77,16 @@ classdef guard < meas_base
             
         end
         
+        function reset_out = reset_eval(obj, x)
+            %output of the reset map
+            reset_out =  (eval(obj.reset, obj.vars.x, x));
+        end
+        
+        function supp_out = supp_eval(obj, t, x)
+            %is (t, x) in the support of the guard?
+            supp_out =  all(eval(obj.supp, obj.get_vars(), [t; x]));
+        end
+        
         function nn_out  = nonneg(obj, t, x)
             %nonnegative dual function at this state transition
             %x comes from the space of src
@@ -86,11 +96,16 @@ classdef guard < meas_base
             
             Rx = eval(obj.reset, obj.vars.x, x);
             
-            vsrc = obj.src.v(t, x);
-            vdest = obj.dest.v(t, Rx);
+            vsrc = obj.src.v_eval(t, x);
+            vdest = obj.dest.v_eval(t, Rx);
             
-            nn_out = vsrc - vdest;
+            nn_out = vsrc - vdest - obj.dual.zeno;
             
+        end
+        
+        function obj = dual_process(obj, zeno_dual)
+            %store the dual variable
+            obj.dual = struct('zeno', zeno_dual, 'solved', 1);
         end
         
     end
