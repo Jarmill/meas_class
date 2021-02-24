@@ -293,7 +293,7 @@ classdef peak_manager_hy < handle
             end
         end
         
-        function [out_sim_multi, out_sim_deal] = sample_traj_multi(obj, init_sampler, Tmax)
+        function [out_sim_multi, out_sim_deal] = sample_traj_multi(obj, init_sampler, Tmax, parallel)
             %SAMPLE_TRAJ_MULTI sample multiple trajectories through the 
             %sample_traj. 
             %
@@ -313,31 +313,55 @@ classdef peak_manager_hy < handle
             %   out_sim_deal:   A struct with fields 'locations', and
             %                   'guards' containing all trajectories in
             %                   each domain
+            
+            if nargin < 2
+                Tmax = 1;
+                parallel = 0;
+            elseif nargin < 3
+                parallel = 0;
+            end
+            
             if isnumeric(init_sampler.init)
                 %given sample points
                 N = size(init_sampler.init, 2);
                 out_sim_multi = cell(N, 1);
-                
-                for i = 1:N
-                    
-                    x0 = init_sampler.init(:, 2);
-                    if length(init_sampler.loc) == 1
-                        init_loc = init_sampler.loc;
-                    else
-                        init_loc = init_sampler.loc(i);
+%                 if parallel
+%                     parfor i = 1:N                    
+%                         x0 = init_sampler.init(:, 2);
+%                         if length(init_sampler.loc) == 1
+%                             init_loc = init_sampler.loc;
+%                         else
+%                             init_loc = init_sampler.loc(i);
+%                         end
+%                         out_sim_multi{i} = obj.sample_traj(0, x0, id0, Tmax);
+%                     end
+%                 else                    
+                    for i = 1:N                    
+                        x0 = init_sampler.init(:, 2);
+                        if length(init_sampler.loc) == 1
+                            init_loc = init_sampler.loc;
+                        else
+                            init_loc = init_sampler.loc(i);
+                        end
+                        out_sim_multi{i} = obj.sample_traj(0, x0, id0, Tmax);
                     end
-                    out_sim_multi{i} = obj.sample_traj(0, x0, id0, Tmax);
-                end
+%                 end
+                
             else
                 %random sample.
                 N = init_sampler.N;
                 out_sim_multi = cell(N, 1);
-                for i = 1:N
-                    
-                    [id0, x0] = init_sampler.init();
-                    
-                    out_sim_multi{i} = obj.sample_traj(0, x0, id0, Tmax);
-                end
+%                 if parallel
+%                     parfor i = 1:N                    
+%                         [id0, x0] = init_sampler.init();                    
+%                         out_sim_multi{i} = obj.sample_traj(0, x0, id0, Tmax);
+%                     end
+%                 else
+                    for i = 1:N                    
+                        [id0, x0] = init_sampler.init();                    
+                        out_sim_multi{i} = obj.sample_traj(0, x0, id0, Tmax);
+                    end
+%                 end
             end
             
             %now `deal' the samples into locations and fields            

@@ -9,7 +9,7 @@ classdef guard < meas_base
         
         reset = [];
         
-        zeno_cap = 100; %maximum number of transitions along guard
+        zeno_cap = 10; %maximum number of transitions along guard
         dual = struct('zeno', 0, 'solved', 0);  %dual variable to zeno constraints
         
     end
