@@ -293,7 +293,7 @@ classdef peak_manager_hy < handle
             end
         end
         
-        function out_sim_multi = sample_traj_multi(obj, init_sampler, Tmax)
+        function [out_sim_multi, out_sim_deal] = sample_traj_multi(obj, init_sampler, Tmax)
             %SAMPLE_TRAJ_MULTI sample multiple trajectories through the 
             %sample_traj. 
             %
@@ -305,6 +305,14 @@ classdef peak_manager_hy < handle
             %OR
             %   x:      state (array)
             %   loc:    location (scalar or array)
+            %
+            %OUTPUT:
+            %   out_sim_multi:  a cell indexed by trajectory sample with
+            %                   fields corresponding to trajectory
+            %                   locations and guard jumps
+            %   out_sim_deal:   A struct with fields 'locations', and
+            %                   'guards' containing all trajectories in
+            %                   each domain
             if isnumeric(init_sampler.init)
                 %given sample points
                 N = size(init_sampler.init, 2);
@@ -321,9 +329,10 @@ classdef peak_manager_hy < handle
                     out_sim_multi{i} = obj.sample_traj(0, x0, id0, Tmax);
                 end
             else
-                %random sample
-                out_sim_multi = cell(init_sampler.N, 1);
-                for i = 1:init_sampler.N
+                %random sample.
+                N = init_sampler.N;
+                out_sim_multi = cell(N, 1);
+                for i = 1:N
                     
                     [id0, x0] = init_sampler.init();
                     
@@ -331,6 +340,28 @@ classdef peak_manager_hy < handle
                 end
             end
             
+            %now `deal' the samples into locations and fields            
+            %matlab hackery to make cells of empty cells
+            out_sim_deal = struct;
+            out_sim_deal.locations = cellfun(@num2cell, cell(length(obj.locations), 1), 'UniformOutput', false);
+            out_sim_deal.guards = cellfun(@num2cell, cell(length(obj.guards), 1), 'UniformOutput', false);
+            
+            
+            
+            for i = 1:N %every sampled trajectory
+                for j = 1:length(out_sim_multi{i}.sim) 
+                    %every location the trajectory visits
+                    traj_curr = out_sim_multi{i}.sim{j};
+                    loc_id = traj_curr.id;
+                    out_sim_deal.locations{loc_id} = [out_sim_deal.locations{loc_id}; traj_curr];
+                end                
+                
+                for j = 1:length(out_sim_multi{i}.jump)
+                    jump_curr = out_sim_multi{i}.jump{j};
+                    jump_id = jump_curr.guard;
+                    out_sim_deal.guards{jump_id} = [out_sim_deal.guards{jump_id}; jump_curr];
+                end
+            end
 %             out_sim = cell(init_sampler.N);
         end
         

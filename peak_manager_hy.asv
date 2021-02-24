@@ -293,24 +293,64 @@ classdef peak_manager_hy < handle
             end
         end
         
-        function out_sim_multi = sample_traj_multi(obj, init_sampler, Tmax)
+        function [out_sim_multi, out_sim_deal] = sample_traj_multi(obj, init_sampler, Tmax)
             %SAMPLE_TRAJ_MULTI sample multiple trajectories through the 
             %sample_traj. 
             %
             %Input: 
             %init_sampler is a struct
-            %   N:    number of points to sample
-            %   init: (id, x) initial location/state funciton
-            
-            if isnumeric(init_sampler.x)
-                N = size(init_sampler.x, 2);
+            %   N:      number of points to sample
+            %   init:   (id, x) initial location/state funciton
+            %
+            %OR
+            %   x:      state (array)
+            %   loc:    location (scalar or array)
+            %
+            %OUTPUT:
+            %   out_sim_multi:  a cell indexed by trajectory sample with
+            %                   fields corresponding to trajectory
+            %                   locations and guard jumps
+            %   out_sim_deal:   A struct with fields 'locations', and
+            %                   'guards' containing all trajectories in
+            %                   each domain
+            if isnumeric(init_sampler.init)
+                %given sample points
+                N = size(init_sampler.init, 2);
                 out_sim_multi = cell(N, 1);
                 
-                if
                 for i = 1:N
+                    
+                    x0 = init_sampler.init(:, 2);
+                    if length(init_sampler.loc) == 1
+                        init_loc = init_sampler.loc;
+                    else
+                        init_loc = init_sampler.loc(i);
+                    end
+                    out_sim_multi{i} = obj.sample_traj(0, x0, id0, Tmax);
+                end
+            else
+                %random sample.
+                N = init_sampler.N;
+                out_sim_multi = cell(N, 1);
+                for i = 1:N
+                    
+                    [id0, x0] = init_sampler.init();
+                    
+                    out_sim_multi{i} = obj.sample_traj(0, x0, id0, Tmax);
                 end
             end
             
+            %now `deal' the samples into locations and fields
+            out_sim_deal = struct('locations', cell(length(PM.locations), 1), ...
+                                  'guards', cell(length(PM.guards), 1));
+            
+            for i = 1:N %every sampled trajectory
+                for j = 1:length(osm{i}.sim) %every location the trajectory visits
+                    traj_curr = osm{i}.sim{j};
+                    loc_id = traj_curr.id;
+                    out_sim_deal.locations{loc_id} = {out_sim_deal.locations{loc_id}; traj_curr};
+                    
+            end
 %             out_sim = cell(init_sampler.N);
         end
         

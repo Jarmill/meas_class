@@ -224,13 +224,13 @@ classdef location < handle
             %nonnegative functions at this location
             
             if isempty(obj.meas_init)
-                nn_init = [];
+                nn_init = 0;
             else
                 nn_init = obj.dual.gamma - obj.dual.v;
             end
             
             if isempty(obj.meas_term)
-                nn_term = [];
+                nn_term = 0;
             else
                 nn_term = obj.dual.v - obj.dual.beta'*obj.objective;
             end
