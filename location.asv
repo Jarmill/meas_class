@@ -152,14 +152,7 @@ classdef location < handle
         
         %% Recovery
         function s_out = mmat_corner(obj)
-            s_out  = struct('init', [], 'term', [], 'occ', []);
-            if ~isempty(obj.meas_init)
-                s_out.init = obj.meas_init.mmat_corner();
-            end
-            if ~isempty(obj.meas_term)
-                s_out.term = obj.meas_term.mmat_corner();
-            end
-            s_out.occ  = obj.meas_occ.mmat_corner();
+            st
         end
         
         

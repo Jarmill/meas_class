@@ -7,6 +7,9 @@ classdef peak_manager_hy < handle
         guards;
                 
         solver;
+        
+        
+
     end
     
     methods
@@ -40,9 +43,8 @@ classdef peak_manager_hy < handle
 
             supp_con = [];       %support constraint     
             mass_init_sum = 0;   %mass of initial measure should be 1
-            objective = 0;
+            objective = 0;                                   
             
-           
             liou_con = cell(length(obj.locations), 1);
             obj_con = cell(length(obj.locations), 1);
             %process the location measures
@@ -108,7 +110,7 @@ classdef peak_manager_hy < handle
                         
             mom_con = [loc_con; mass_con; zeno_con];
 
-        end    
+        end                    
     
         function [sol, dual_rec] = peak_solve(obj, objective, mom_con,supp_con)
             %PEAK_SOLVE formulate and solve peak estimation program from
@@ -123,8 +125,27 @@ classdef peak_manager_hy < handle
             [sol.status,sol.obj_rec, ~,sol.dual_rec]= msol(P);        
 
         end
-
-        function obj = dual_process(obj, order, dual_rec)
+        
+        function s_out = mmat_corner(obj)
+            %get the top corner of the moment matrix for all measures
+%             s_out = struct('locations',  cell(length(obj.locations), 1), ...
+%                            'guards', cell(length(obj.locations), 1));
+                       
+            s_out = {};
+            s_out.locations = cell(length(obj.locations), 1);
+            s_out.guards = cell(length(obj.guards), 1);
+            
+            for i = 1:length(obj.locations)
+                s_out.locations{i} = obj.locations{i}.mmat_corner();
+            end
+            
+            for i = 1:length(obj.guards)
+                s_out.guards{i} = obj.guards{i}.mmat_corner();
+            end
+            
+        end
+        
+        function obj = dual_process(obj, order, dual_rec, gamma)
             %DUAL_PROCESS dispatch the dual variables from solution to
             %locations and measures, turn the variables into nonnegative
             %functions along trajectories
@@ -136,7 +157,9 @@ classdef peak_manager_hy < handle
             rec_eq = dual_rec{1};
             rec_ineq = dual_rec{2};
             
-            gamma = rec_eq(end);
+            if nargin < 3
+                gamma = rec_eq(end);
+            end
             
             
             liou_offset = 0;
@@ -181,8 +204,13 @@ classdef peak_manager_hy < handle
             
             d = 2*order;
             [objective, mom_con, supp_con] = obj.peak_cons(d);
+            
+            
             sol = obj.peak_solve(objective, mom_con,supp_con);
-            obj.dual_process(order, sol.dual_rec);
+            
+            gamma_ind =  length(mom_con) - length(obj.guards);
+            gamma = sol.dual_rec{1}(gamma_ind);
+            obj.dual_process(order, sol.dual_rec, gamma);
             
         end
         
@@ -281,8 +309,8 @@ classdef peak_manager_hy < handle
                     id_curr = g_new.dest.id;
                     x_curr = Rx;
                     
-                    if zeno_count(g_id_new) >= g_new.zeno_cap
-                        %maximum number of jumps is met or exceeded
+                    if zeno_count(g_id_new) > g_new.zeno_cap
+                        %maximum number of jumps is exceeded
                         break
                     end
                 else

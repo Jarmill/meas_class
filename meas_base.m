@@ -101,6 +101,26 @@ classdef meas_base < handle
             mom_out = mom(Rv);
         end        
         
+        %% moment recovery
+        
+        function d_out = mmat(obj)
+            %return moment matrix evaluated at current solution
+            d_out = double(mmat(obj.meas));
+        end
+        
+        function d_out = mmat_corner(obj)
+            %return top-corner moment matrix evaluated at current solution
+            %only moments of order 0-2
+            monom_curr = obj.monom(0, 1);
+            mmat_curr = mom(monom_curr*monom_curr');            
+            d_out = double(mmat_curr);
+        end
+        
+        function d_out = mvec(obj)
+            %return moment sequence evaluated at current solution
+            d_out = double(mvec(obj.meas));
+        end
+        
         
         %% overloads
         function e = isempty(obj)
