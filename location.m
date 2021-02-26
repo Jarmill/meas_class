@@ -162,6 +162,22 @@ classdef location < handle
             s_out.occ  = obj.meas_occ.mmat_corner();
         end
         
+        function [optimal, mom_out] = recover(obj, tol)
+            %RECOVER if top corner of the moment matrix is rank-1, then
+            %return approximate optimizer
+            
+            if nargin < 2
+                tol = 5e-4;
+            end
+            
+            [opt_init, mom_init] = obj.meas_init.recover(tol);
+            [opt_term, mom_term] = obj.meas_term.recover(tol);
+            
+            optimal = opt_init && opt_term;
+            
+            mom_out = struct('t0', mom_init.t, 'x0', mom_init.x, ...
+                             'tp', mom_term.t, 'xp', mom_term.x);            
+        end
         
         %% Dual variables
         

@@ -121,6 +121,22 @@ classdef meas_base < handle
             d_out = double(mvec(obj.meas));
         end
         
+        function [optimal, mom_out] = recover(obj, tol)
+            %RECOVER if top corner of the moment matrix is rank-1, then
+            %return approximate optimizer
+            
+            if nargin < 2
+                tol = 5e-4;
+            end
+            
+            corner = obj.mmat_corner();
+            rankM = rank(corner, 1e-3);
+            optimal = (rankM == 1);
+    
+            mom_out.t = double(mom(obj.vars.t));
+            mom_out.x = double(mom(obj.vars.x));
+    
+        end
         
         %% overloads
         function e = isempty(obj)
@@ -130,6 +146,8 @@ classdef meas_base < handle
             %nullstellensatz?'
             e = isempty(obj.supp);
         end
+        
+        
         
         
     end

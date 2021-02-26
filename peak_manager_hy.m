@@ -35,11 +35,17 @@ classdef peak_manager_hy < handle
         
         %% Formulating and solving program
         
-        function [objective, mom_con, supp_con] = peak_cons(obj,d)
+        function [objective, mom_con, supp_con, len_liou] = peak_cons(obj,d)
             %PEAKCONS formulate support and measure constraints for peak
             %program at degree d
-            %   Detailed explanation goes here
-%             outputArg = obj.Property1 + inputArg;
+            %Input:
+            %   d:  Monomials involved in relaxation (2*order)
+            %
+            %Output:
+            %   objective:  target to maximize  (@mom)
+            %   mom_con:    moment constraints  (@momcon)
+            %   supp_con:   support constraints (@supcon)
+            %   len_liou:   number of liouville constraints (uint32)
 
             supp_con = [];       %support constraint     
             mass_init_sum = 0;   %mass of initial measure should be 1
@@ -100,15 +106,20 @@ classdef peak_manager_hy < handle
             end
             
             loc_con = [];
+            liou_con_all = [];
+            obj_con_all = [];
             for i = 1:length(liou_con)
                 %TODO: figure out the sign convention for dual variables
                 %should the negative sign be there on liou_con?
-                loc_con = [loc_con; -liou_con{i} == 0; obj_con{i}];
+%                 loc_con = [loc_con; -liou_con{i} == 0; obj_con{i}];
+                liou_con_all = [liou_con_all; -liou_con{i} == 0];
+                obj_con_all  = [obj_con_all; obj_con{i}];
             end
                 
+            len_liou = length(liou_con_all);
             
                         
-            mom_con = [loc_con; mass_con; zeno_con];
+            mom_con = [liou_con_all; mass_con; obj_con_all; zeno_con];
 
         end                    
     
@@ -203,15 +214,34 @@ classdef peak_manager_hy < handle
             %the main call, the full peak program at the target order
             
             d = 2*order;
-            [objective, mom_con, supp_con] = obj.peak_cons(d);
+            [objective, mom_con, supp_con, len_liou] = obj.peak_cons(d);
             
             
             sol = obj.peak_solve(objective, mom_con,supp_con);
             
-            gamma_ind =  length(mom_con) - length(obj.guards);
-            gamma = sol.dual_rec{1}(gamma_ind);
+%             gamma_ind =  length(mom_con) - length(obj.guards);
+            gamma = sol.dual_rec{1}(len_liou+1);
             obj.dual_process(order, sol.dual_rec, gamma);
             
+        end
+        
+        %% Recovery
+        
+        function [optimal, mom_out] = recover(obj, tol)
+            %RECOVER if top corner of the moment matrix is rank-1, then
+            %return approximate optimizer
+            
+            if nargin < 2
+                tol = 5e-4;
+            end
+            
+            optimal = zeros(length(obj.locations), 1);
+            mom_out = cell(length(obj.locations), 1);
+            
+            for i = 1:length(obj.locations)
+                [optimal(i), mom_out_curr] = obj.locations{i}.recover(tol);
+                mom_out{i} = mom_out_curr;
+            end            
         end
         
         %% Sampler
