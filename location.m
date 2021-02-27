@@ -70,7 +70,7 @@ classdef location < handle
             vars_new= struct('t', t_new, 'x', x_new);
             
             if nargin == 3
-                vars_new.supp = subs(supp_old, obj.get_vars(), ...
+                vars_new.supp = subs_vars(supp_old, obj.get_vars(), ...
                                 [t_new; x_new]);
             end
         end

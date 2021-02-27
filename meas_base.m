@@ -62,7 +62,7 @@ classdef meas_base < handle
         
         function f_new = var_sub(obj, vars_old, f_old)
             %substitute variables of measures in for f_old            
-            f_new = subs(f_old, [vars_old.t; vars_old.x], ...
+            f_new = subs_vars(f_old, [vars_old.t; vars_old.x], ...
                                 [obj.vars.t; obj.vars.x]);
         end
                 

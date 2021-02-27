@@ -8,6 +8,7 @@ classdef guard < meas_base
         dest = [];
         
         reset = [];
+        reset_identity = 0;
         
         zeno_cap = 2; %maximum number of transitions along guard
         dual = struct('zeno', 0, 'solved', 0);  %dual variable to zeno constraints
@@ -47,10 +48,12 @@ classdef guard < meas_base
             obj.vars.t = eval(tname);
             obj.vars.x = eval(xname);
             
-            obj.supp = subs(supp_old, [vars_old.t; vars_old.x], ...
+            obj.supp = subs_vars(supp_old, [vars_old.t; vars_old.x], ...
                                 obj.get_vars());
-            obj.reset = subs(reset_old, [vars_old.t; vars_old.x], ...
+            obj.reset = subs_vars(reset_old, [vars_old.t; vars_old.x], ...
                 obj.get_vars());
+            
+            
             
             obj.meas = meas(obj.get_vars());
         end
