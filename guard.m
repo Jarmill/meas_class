@@ -53,7 +53,9 @@ classdef guard < meas_base
             obj.reset = subs_vars(reset_old, [vars_old.t; vars_old.x], ...
                 obj.get_vars());
             
-            
+            if isequal(obj.reset, obj.vars.x)
+                obj.reset_identity = 1;
+            end
             
             obj.meas = meas(obj.get_vars());
         end
@@ -67,8 +69,13 @@ classdef guard < meas_base
         function mom_out = reset_push(obj, d)
             v = obj.monom(d);
 %             f_curr = obj.var_sub(vars_old, f_old);
-            Rv = subs(v, obj.get_vars(), [obj.vars.t; obj.reset]);
-            mom_out = mom(Rv);
+            if obj.reset_identity
+                %trivial reset map (local measures)
+                mom_out = mom(v);
+            else
+                Rv = subs(v, obj.get_vars(), [obj.vars.t; obj.reset]);
+                mom_out = mom(Rv);
+            end
         end
         
         function [mom_src, mom_dest] = liou_reset(obj, d)
