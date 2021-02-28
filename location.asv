@@ -169,7 +169,8 @@ classdef location < handle
             if nargin < 2
                 tol = 5e-4;
             end
-                        
+            
+            
             if isempty(obj.meas_init)
                 opt_init = 1;
                 mom_init.t = []; mom_init.x = [];
@@ -180,7 +181,6 @@ classdef location < handle
             if isempty(obj.meas_term)
                 opt_term = 1;
                 mom_term.t = []; mom_term.x = [];
-                corner_term = 0;
             else
                 [opt_term, mom_term, corner_term] = obj.meas_term.recover(tol);
             end

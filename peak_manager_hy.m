@@ -227,7 +227,7 @@ classdef peak_manager_hy < handle
         
         %% Recovery
         
-        function [optimal, mom_out] = recover(obj, tol)
+        function [optimal, mom_out, corner] = recover(obj, tol)
             %RECOVER if top corner of the moment matrix is rank-1, then
             %return approximate optimizer
             
@@ -237,10 +237,9 @@ classdef peak_manager_hy < handle
             
             optimal = zeros(length(obj.locations), 1);
             mom_out = cell(length(obj.locations), 1);
-            
+            corner = cell(length(obj.locations), 1);
             for i = 1:length(obj.locations)
-                [optimal(i), mom_out_curr] = obj.locations{i}.recover(tol);
-                mom_out{i} = mom_out_curr;
+                [optimal(i), mom_out{i}, corner{i}] = obj.locations{i}.recover(tol);                 
             end            
         end
         
@@ -382,44 +381,26 @@ classdef peak_manager_hy < handle
             if isnumeric(init_sampler.init)
                 %given sample points
                 N = size(init_sampler.init, 2);
-                out_sim_multi = cell(N, 1);
-%                 if parallel
-%                     parfor i = 1:N                    
-%                         x0 = init_sampler.init(:, 2);
-%                         if length(init_sampler.loc) == 1
-%                             init_loc = init_sampler.loc;
-%                         else
-%                             init_loc = init_sampler.loc(i);
-%                         end
-%                         out_sim_multi{i} = obj.sample_traj(0, x0, id0, Tmax);
-%                     end
-%                 else                    
-                    for i = 1:N                    
-                        x0 = init_sampler.init(:, 2);
-                        if length(init_sampler.loc) == 1
-                            init_loc = init_sampler.loc;
-                        else
-                            init_loc = init_sampler.loc(i);
-                        end
-                        out_sim_multi{i} = obj.sample_traj(0, x0, id0, Tmax);
+                out_sim_multi = cell(N, 1);               
+                %parallel code requires splitting off separate objects
+                for i = 1:N                    
+                    x0 = init_sampler.init(:, 2);
+                    if length(init_sampler.loc) == 1
+                        init_loc = init_sampler.loc;
+                    else
+                        init_loc = init_sampler.loc(i);
                     end
-%                 end
+                    out_sim_multi{i} = obj.sample_traj(0, x0, id0, Tmax);
+                end
                 
             else
                 %random sample.
                 N = init_sampler.N;
                 out_sim_multi = cell(N, 1);
-%                 if parallel
-%                     parfor i = 1:N                    
-%                         [id0, x0] = init_sampler.init();                    
-%                         out_sim_multi{i} = obj.sample_traj(0, x0, id0, Tmax);
-%                     end
-%                 else
-                    for i = 1:N                    
-                        [id0, x0] = init_sampler.init();                    
-                        out_sim_multi{i} = obj.sample_traj(0, x0, id0, Tmax);
-                    end
-%                 end
+                for i = 1:N                    
+                    [id0, x0] = init_sampler.init();                    
+                    out_sim_multi{i} = obj.sample_traj(0, x0, id0, Tmax);
+                end
             end
             
             %now `deal' the samples into locations and fields            
