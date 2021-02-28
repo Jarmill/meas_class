@@ -233,7 +233,7 @@ classdef location < handle
         end
         
         function supp_out = supp_eval(obj, t, x)
-            %is (t, x) in the support of the guard?
+            %is (t, x) in the support of the location?
             supp_out =  all(eval(obj.supp, obj.get_vars(), [t; x]));
         end
         

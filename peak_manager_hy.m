@@ -245,6 +245,18 @@ classdef peak_manager_hy < handle
         
         %% Sampler
         
+        function [supp_loc] = supp_loc_eval(obj, t, x)
+            %find the support evaluation of locations and guards at index
+            
+            
+            N_loc = length(obj.locations);
+            supp_loc = zeros(N_loc, 1);
+%             supp_loc(1) = obj.locations{id}.supp_eval(t, x);
+            for j = 1:N_loc
+                supp_loc(j) = obj.locations{j}.supp_eval(t, x);
+            end
+        end
+        
         function [supp_loc, supp_g] = supp_g_eval(obj, t, x, id)
             %find the support evaluation of locations and guards at index
             %(or source index) id

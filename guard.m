@@ -103,8 +103,11 @@ classdef guard < meas_base
             
             %check the sign convention
             %v should decrease along the jump
-            
-            Rx = eval(obj.reset, obj.vars.x, x);
+            if obj.reset_identity
+                Rx = x;
+            else
+                Rx = eval(obj.reset, obj.vars.x, x);
+            end
             
             vsrc = obj.src.v_eval(t, x);
             vdest = obj.dest.v_eval(t, Rx);
