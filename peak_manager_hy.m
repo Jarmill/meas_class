@@ -6,10 +6,7 @@ classdef peak_manager_hy < handle
         locations;
         guards;
                 
-        solver;
-        
-        
-
+        solver;                
     end
     
     methods
@@ -257,7 +254,7 @@ classdef peak_manager_hy < handle
             end
         end
         
-        function [supp_loc, supp_g] = supp_g_eval(obj, t, x, id)
+        function [supp_loc, supp_g, possible_g] = supp_g_eval(obj, t, x, id)
             %find the support evaluation of locations and guards at index
             %(or source index) id
             
@@ -265,9 +262,13 @@ classdef peak_manager_hy < handle
             N_guards = length(g_mask);
             
             supp_g = zeros(N_guards, 1);
+            possible_g = [];
             supp_loc(1) = obj.locations{id}.supp_eval(t, x);
             for j = 1:N_guards
                 supp_g(j) = obj.guards{g_mask(j)}.supp_eval(t, x);
+                if supp_g(j)
+                    possible_g = [possible_g; obj.guards{g_mask(j)}.id];
+                end
             end
         end
         
@@ -437,8 +438,74 @@ classdef peak_manager_hy < handle
                     out_sim_deal.guards{jump_id} = [out_sim_deal.guards{jump_id}; jump_curr];
                 end
             end
-%             out_sim = cell(init_sampler.N);
         end
+        
+        
+        %% Plotter
+        function plot_nonneg(obj,osd)
+            % PLOT_NONNEG plot the nonnegative functions along the
+            % sampled trajectories
+            %osd: out_sim_deal
+            
+            FS_title = 14;
+            FS_axis = 12;
+            
+            Ng = length(obj.guards);
+            Nl = length(obj.locations);
+            
+            figure(20)
+            clf
+            %plot the guards
+            for g = 1:Ng
+                subplot(Ng, 1, g)
+                hold on
+                xlabel('time', 'FontSize', FS_axis)
+                id_src  = obj.guards{g}.src.id;
+                id_dest = obj.guards{g}.dest.id;
+                ylabel(['$v_', num2str(id_src), '(x) - v_', num2str(id_dest), ...
+                        '(R_', num2str(g),'(x))$'],'interpreter', 'latex', 'FontSize', FS_axis)
+                title(['Guard ', num2str(obj.guards{g}.id), ' Transition'], 'FontSize', FS_title)
+
+                for j = 1:length(osd.guards{g})
+                        j_curr = osd.guards{g}{j};            
+                        stem(j_curr.t, j_curr.nonneg, 'c') 
+                end
+            end
+
+
+            %% Locations
+            %setup
+            nonneg_title = {'Initial Value', 'Decrease in Value', 'Cost Proxy'};
+            for i = 1:Nl
+                figure(50+i)
+                clf
+                ax_loc = obj.nonneg_axis_str(i);
+                for k = 1:3
+                    subplot(3, 1, k)
+                    hold on
+                    xlabel('time', 'FontSize', FS_axis)
+                    title(['Loc ', num2str(i), ' ', nonneg_title{k}], 'FontSize', FS_title)
+                    ylabel(ax_loc{k}, 'interpreter', 'latex', 'FontSize', FS_axis);
+                end            
+                for j = 1:length(osd.locations{i})
+                    traj_curr = osd.locations{i}{j};
+                    for k = 1:3            
+                        subplot(3, 1, k)
+                        plot(traj_curr.t, traj_curr.nonneg(:, k), 'c')
+                    end
+                end   
+            end
+        end
+
+
+    function str_out = nonneg_axis_str(obj,loc)
+        locs = num2str(loc);
+        str_out{1} = ['$\gamma - v_', locs, '(x)$'];
+        str_out{2} = ['$-L_{f', locs, '} v_', locs, '(x)$'];
+        str_out{3} = ['$v_', locs, '(x) - p_', locs, '(x)$' ];
+    end
+            
+            
         
         
     end
