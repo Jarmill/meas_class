@@ -361,9 +361,10 @@ classdef peak_manager_hy < handle
                     break
                 end
             end
+            out_sim.t_end = t_curr;
         end
         
-        function [out_sim_multi, out_sim_deal] = sample_traj_multi(obj, init_sampler, Tmax, parallel)
+        function [out_sim_multi, out_sim_deal] = sample_traj_multi(obj, init_sampler, Tmax)
             %SAMPLE_TRAJ_MULTI sample multiple trajectories through the 
             %sample_traj. 
             %
@@ -399,9 +400,9 @@ classdef peak_manager_hy < handle
                 for i = 1:N                    
                     x0 = init_sampler.init(:, 2);
                     if length(init_sampler.loc) == 1
-                        init_loc = init_sampler.loc;
+                        id0 = init_sampler.loc;
                     else
-                        init_loc = init_sampler.loc(i);
+                        id0 = init_sampler.loc(i);
                     end
                     out_sim_multi{i} = obj.sample_traj(0, x0, id0, Tmax);
                 end
