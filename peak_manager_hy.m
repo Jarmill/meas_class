@@ -285,6 +285,8 @@ classdef peak_manager_hy < handle
                 tcurr = t(:, i);               
                 xcurr = x(:, i);               
                 
+                %assume that the guards on are on the boundary of the
+                %region
 %                 [supp_loc, supp_g] = supp_g_eval(obj, tcurr, xcurr, id);
 %                 event_eval(i) = supp_loc && all(~supp_g);
                 event_eval = obj.locations{id}.supp_eval(t, x);
