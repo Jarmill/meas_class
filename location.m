@@ -316,7 +316,7 @@ classdef location < handle
             
             %simulate the trajectory
             curr_ode_options = odeset('Events',curr_event, 'RelTol', 1e-7, ...
-                                      'MaxStep', 0.05);
+                                      'AbsTol', 1e-8, 'MaxStep', 0.01);
         
             out_sim = struct;
             [out_sim.t, out_sim.x] = ode15s(@obj.f_eval, [t0, Tmax], x0, curr_ode_options);

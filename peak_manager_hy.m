@@ -125,8 +125,11 @@ classdef peak_manager_hy < handle
             %constraints and objective    
 
             mset('yalmip',true);
-            mset(sdpsettings('solver', obj.solver));
-
+            %make sure the solution is precise
+            mset(sdpsettings('solver', obj.solver, 'mosek.MSK_DPAR_BASIS_TOL_S', 1e-8, ...
+                'mosek.MSK_DPAR_BASIS_TOL_X', 1e-8, 'mosek.MSK_DPAR_INTPNT_CO_TOL_MU_RED', 1e-9, ...
+                'mosek.MSK_DPAR_INTPNT_TOL_PATH', 1e-6));
+            % https://docs.mosek.com/9.2/pythonfusion/parameters.html
             P = msdp(max(objective), mom_con, supp_con);
 
             sol = struct;
@@ -444,8 +447,8 @@ classdef peak_manager_hy < handle
         end
         
         
-        %% Plotter
-        function plot_nonneg(obj,osd)
+        %% Plotter        
+        function plot_nonneg_jump(obj,osd)
             % PLOT_NONNEG plot the nonnegative functions along the
             % sampled trajectories
             %osd: out_sim_deal
@@ -475,7 +478,14 @@ classdef peak_manager_hy < handle
                 end
             end
 
-
+        end
+        
+        function plot_nonneg_loc(obj,osd)
+                    FS_title = 14;
+            FS_axis = 12;
+            
+            Ng = length(obj.guards);
+            Nl = length(obj.locations);
             %% Locations
             %setup
             nonneg_title = {'Initial Value', 'Decrease in Value', 'Cost Proxy'};
