@@ -282,9 +282,9 @@ classdef peak_manager_hy < handle
                 tcurr = t(:, i);               
                 xcurr = x(:, i);               
                 
-                [supp_loc, supp_g] = supp_g_eval(obj, tcurr, xcurr, id);
-                event_eval(i) = supp_loc && all(~supp_g);
-                
+%                 [supp_loc, supp_g] = supp_g_eval(obj, tcurr, xcurr, id);
+%                 event_eval(i) = supp_loc && all(~supp_g);
+                event_eval = obj.locations{id}.supp_eval(t, x);
             end
                         
             %stop integrating when the system falls outside support
@@ -325,13 +325,14 @@ classdef peak_manager_hy < handle
                 x_curr = out_sim_curr.x(end, :)';
                 
                 %figure out jump
-                [~, supp_g] = obj.supp_g_eval(t_curr, x_curr, id_curr);
+                [~, supp_g, poss_g] = obj.supp_g_eval(t_curr, x_curr, id_curr);
                 if any(supp_g)
                     %there is a jump to another guard
                     %xcurr is in the support of some guard
                     
                     %returns the first valid guard
-                    [~, g_id_new] = max(supp_g); %maybe random?
+%                     [~, g_id_new] = max(supp_g); %maybe random?
+                    g_id_new = poss_g(1);
                     
                     zeno_count(g_id_new) = zeno_count(g_id_new) + 1;
                     g_new = obj.guards{g_id_new};
@@ -399,7 +400,7 @@ classdef peak_manager_hy < handle
                 out_sim_multi = cell(N, 1);               
                 %parallel code requires splitting off separate objects
                 for i = 1:N                    
-                    x0 = init_sampler.init(:, 2);
+                    x0 = init_sampler.init(2:end, i);
                     if length(init_sampler.loc) == 1
                         id0 = init_sampler.loc;
                     else

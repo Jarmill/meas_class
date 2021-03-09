@@ -73,7 +73,8 @@ classdef guard < meas_base
                 %trivial reset map (local measures)
                 mom_out = mom(v);
             else
-                Rv = subs(v, obj.get_vars(), [obj.vars.t; obj.reset]);
+                %reset only involves x, t stays the same
+                Rv = subs(v, obj.vars.x, [obj.reset]);
                 mom_out = mom(Rv);
             end
         end
