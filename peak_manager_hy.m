@@ -290,7 +290,8 @@ classdef peak_manager_hy < handle
             %stop integrating when the system falls outside support
             
             terminal = 1;
-            direction = 0;                        
+%             direction = 0;                        
+            direction = -1;   % negative direction
         end 
        
         
