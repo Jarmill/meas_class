@@ -229,6 +229,13 @@ classdef peak_manager_hy < handle
             end
             
             %TODO: dual variable for Tmax
+%             if isempty(obj.locations{1}.vars.t)
+%                 %time independent hack
+%                 alpha = rec_ineq(cost_con_offset + i);
+%                 cost_con_offset = cost_con_offset + 1;
+%                 
+%                 %store the dual variable alpha somewhere
+%             end
             
             for i = 1:length(obj.guards)
 %                 obj.guards{i}.zeno_dual = rec_ineq(cost_con_offset + i);
