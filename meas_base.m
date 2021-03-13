@@ -26,6 +26,10 @@ classdef meas_base < handle
                 supp = vars.supp;
             end
             
+            if ~isfield(vars, 't')
+                vars.t = []; %time-independent
+            end
+            
             if isnumeric(supp)
                 supp_new = ([vars.t; vars.x] == supp);
                 supp = supp_new;
@@ -90,7 +94,11 @@ classdef meas_base < handle
             %lie moments
             v = obj.monom(d);
             f_curr = obj.var_sub(vars_old, f_old);
-            mom_out = mom(diff(v, obj.vars.t) + diff(v, obj.vars.x)*f_curr);
+            mom_out = mom(diff(v, obj.vars.x)*f_curr);
+            
+            if ~isempty(obj.vars.t)
+                mom_out = mom(diff(v, obj.vars.t)) + mom_out;
+            end
         end
         
         function mom_out = mom_push(obj, d, vars_old, f_old)

@@ -32,11 +32,12 @@ classdef peak_manager_hy < handle
         
         %% Formulating and solving program
         
-        function [objective, mom_con, supp_con, len_liou] = peak_cons(obj,d)
+        function [objective, mom_con, supp_con, len_liou] = peak_cons(obj,d, Tmax)
             %PEAKCONS formulate support and measure constraints for peak
             %program at degree d
             %Input:
-            %   d:  Monomials involved in relaxation (2*order)
+            %   d:      Monomials involved in relaxation (2*order)
+            %   Tmax:   Maximum time (only when time-independent)
             %
             %Output:
             %   objective:  target to maximize  (@mom)
@@ -50,6 +51,8 @@ classdef peak_manager_hy < handle
             
             liou_con = cell(length(obj.locations), 1);
             obj_con = cell(length(obj.locations), 1);
+            
+            mass_occ_sum = 0;
             %process the location measures
             for i = 1:length(obj.locations)
                 loc_curr = obj.locations{i};
@@ -58,7 +61,7 @@ classdef peak_manager_hy < handle
                 supp_con = [supp_con; loc_curr.supp_con()];
 
                 %find moment constraints of current location
-                [obj_curr, obj_con_curr] = loc_curr.objective_con(d);
+                [obj_curr, obj_con_curr] = loc_curr.objective_con(d);                                
                 
                 if ~isempty(obj_curr)
                     objective = objective + obj_curr;
@@ -70,6 +73,10 @@ classdef peak_manager_hy < handle
                 %initial measure has mass 1
                 if ~isempty(loc_curr.meas_init)
                     mass_init_sum = mass_init_sum + loc_curr.meas_init.mass();
+                end
+                
+                if isempty(loc_curr.vars.t)
+                    mass_occ_sum = mass_occ_sum + loc_curr.meas_occ.mass();
                 end
             end
             
@@ -94,13 +101,28 @@ classdef peak_manager_hy < handle
             end
             
             %finalize moment constraints
+            
+            %mass of initial measure sums to one
             if isnumeric(mass_init_sum)
-                mass_con = [];
+                mass_init_con = [];
             else
                 % mass_init_sum == 0 eliminates the constraint when there
                 % is one location. keep it in.
-                mass_con = (mass_init_sum - 1 == 0);
+                mass_init_con = (mass_init_sum - 1 == 0);
             end
+            
+            %TIME-INDEPENDENT mass of occupation measures are less than
+            %Tmax. Only when t is not included as a variable;
+            if isnumeric(mass_occ_sum) && (nargin > 2)
+                
+                %TODO: access Tmax
+                mass_occ_con = [];
+            else
+                % mass_init_sum == 0 eliminates the constraint when there
+                % is one location. keep it in.
+                mass_occ_con = (mass_occ_sum - Tmax == 0);
+            end
+            
             
             loc_con = [];
             liou_con_all = [];
@@ -116,7 +138,7 @@ classdef peak_manager_hy < handle
             len_liou = length(liou_con_all);
             
                         
-            mom_con = [liou_con_all; mass_con; obj_con_all; zeno_con];
+            mom_con = [liou_con_all; mass_init_con; mass_occ_con; obj_con_all; zeno_con];
 
         end                    
     
@@ -134,7 +156,6 @@ classdef peak_manager_hy < handle
 
             sol = struct;
             [sol.status,sol.obj_rec, ~,sol.dual_rec]= msol(P);        
-
         end
         
         function s_out = mmat_corner(obj)
@@ -171,7 +192,7 @@ classdef peak_manager_hy < handle
             if nargin < 3
                 gamma = rec_eq(end);
             end
-            
+                        
             
             liou_offset = 0;
             cost_con_offset = 0;
@@ -180,7 +201,12 @@ classdef peak_manager_hy < handle
                 loc_curr = obj.locations{i};
                 
                 %liouville
-                nvar_curr = 1 + length(loc_curr.vars.x);
+                %time independent
+                if isempty(loc_curr.vars.t)
+                    nvar_curr = length(loc_curr.vars.x);
+                else
+                    nvar_curr = length(loc_curr.vars.x)+1;
+                end
                 liou_len_curr = nchoosek(nvar_curr + 2*order, 2*order);
                 
                 v_coeff = rec_eq((1:liou_len_curr) + liou_offset);
@@ -202,6 +228,8 @@ classdef peak_manager_hy < handle
                 
             end
             
+            %TODO: dual variable for Tmax
+            
             for i = 1:length(obj.guards)
 %                 obj.guards{i}.zeno_dual = rec_ineq(cost_con_offset + i);
                 obj.guards{i}.dual_process(rec_ineq(cost_con_offset + i));
@@ -210,11 +238,15 @@ classdef peak_manager_hy < handle
             
         end
         
-        function sol = peak(obj, order)
+        function sol = peak(obj, order, Tmax)
             %the main call, the full peak program at the target order
             
+            if nargin < 3
+                Tmax = 0;
+            end
+            
             d = 2*order;
-            [objective, mom_con, supp_con, len_liou] = obj.peak_cons(d);
+            [objective, mom_con, supp_con, len_liou] = obj.peak_cons(d, Tmax);
             
             
             sol = obj.peak_solve(objective, mom_con,supp_con);

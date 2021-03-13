@@ -15,6 +15,10 @@ classdef guard < meas_base
         
     end
     
+    properties(Access=private)
+        TIME_INDEP= 0;
+    end
+    
     methods
         function obj = guard(id, vars_old, src,dest,supp_old, reset_old)
             %GUARD Construct an instance of this class
@@ -39,14 +43,21 @@ classdef guard < meas_base
             %VAR_DEF create new variables 't[suffix]_id',
             %'x[suffix]_id
             
-            tname = ['t', suffix, '_', num2str(obj.id)];
-            xname = ['x', suffix, '_', num2str(obj.id)];
             
-            mpol(tname, 1, 1);
+            if isempty(obj.vars.t)
+                t_new = [];
+                obj.TIME_INDEP = 1;
+            else
+                tname = ['t', suffix, '_', num2str(obj.id)];                       
+                mpol(tname, 1, 1);
+                t_new = eval(tname);                   
+            end
+            
+            xname = ['x', suffix, '_', num2str(obj.id)];                        
             mpol(xname, length(obj.vars.x), 1);
+            x_new = eval(xname);
             
-            obj.vars.t = eval(tname);
-            obj.vars.x = eval(xname);
+            obj.vars = struct('t', t_new, 'x', x_new);
             
             obj.supp = subs_vars(supp_old, [vars_old.t; vars_old.x], ...
                                 obj.get_vars());
@@ -95,7 +106,11 @@ classdef guard < meas_base
         
         function supp_out = supp_eval(obj, t, x)
             %is (t, x) in the support of the guard?
-            supp_out =  all(eval(obj.supp, obj.get_vars(), [t; x]));
+            if obj.TIME_INDEP
+                supp_out =  all(eval(obj.supp, obj.get_vars(), x));            
+            else
+                supp_out =  all(eval(obj.supp, obj.get_vars(), [t; x]));            
+            end
         end
         
         function nn_out  = nonneg(obj, t, x)

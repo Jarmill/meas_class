@@ -19,11 +19,13 @@ classdef location < handle
         f;          %dynamics
         objective;
         
-        dual = struct('v', 0, 'Lv', 0, 'beta', 1, 'gamma', 0, 'solved', 0); 
-        
+        dual = struct('v', 0, 'Lv', 0, 'beta', 1, 'gamma', 0, 'solved', 0);         
         %still need to deal with dynamics f
-        %and cost p (with maximin)
-        
+        %and cost p (with maximin)        
+    end
+    
+    properties(Access = private)
+        TIME_INDEP = 0;
     end
     
     methods
@@ -34,6 +36,10 @@ classdef location < handle
             %fill in properties
             obj.id = id;
             obj.vars = vars;
+            if ~isfield(vars, 't') || isempty(vars.t)
+                obj.vars.t = []; %time-independent
+                obj.TIME_INDEP = 1;            
+            end
             obj.supp = supp;
             
             obj.f = f;            
@@ -58,13 +64,17 @@ classdef location < handle
             %VAR_DEF create new variables 't[suffix]_id',
             %'x[suffix]_id
             
-            tname = ['t', suffix, '_', num2str(obj.id)];
+            if isempty(obj.vars.t)
+                t_new = [];
+            else
+                tname = ['t', suffix, '_', num2str(obj.id)];                       
+                mpol(tname, 1, 1);
+                t_new = eval(tname);
+            end
+            
             xname = ['x', suffix, '_', num2str(obj.id)];
-            
-            mpol(tname, 1, 1);
             mpol(xname, length(obj.vars.x), 1);
-            
-            t_new = eval(tname);
+                        
             x_new = eval(xname);
             
             vars_new= struct('t', t_new, 'x', x_new);
@@ -208,33 +218,58 @@ classdef location < handle
              
              monom = mmon(obj.get_vars(), 0, 2*order);
              obj.dual.v = v'*monom;
-             obj.dual.Lv = diff(obj.dual.v, obj.vars.t) + diff(obj.dual.v, obj.vars.x)*obj.f;
+             
+             obj.dual.Lv = diff(obj.dual.v, obj.vars.x)*obj.f;
+             if ~isempty(obj.vars.t)
+                obj.dual.Lv = diff(obj.dual.v, obj.vars.t) + obj.dual.Lv;
+             end
             
         end        
         
+        %it may be worthwhile to set location_time_indep as its own class
         function f_out = f_eval(obj, t, x)
             %evaluate v
-            f_out = eval(obj.f, obj.get_vars(), [t; x]);
+            if obj.TIME_INDEP
+                f_out = eval(obj.f, obj.get_vars(), x);
+            else 
+                f_out = eval(obj.f, obj.get_vars(), [t; x]);
+            end
         end
         
         function v_out = v_eval(obj, t, x)
             %evaluate v
-            v_out = eval(obj.dual.v, obj.get_vars(), [t; x]);
+            if obj.TIME_INDEP
+                v_out = eval(obj.dual.v, obj.get_vars(), x);
+            else
+                v_out = eval(obj.dual.v, obj.get_vars(), [t; x]);
+            end
         end
         
         function Lv_out = Lv_eval(obj, t, x)
             %evaluate Lv
-            Lv_out = eval(obj.dual.Lv, obj.get_vars(), [t; x]);
+            if obj.TIME_INDEP
+                Lv_out = eval(obj.dual.Lv, obj.get_vars(), x);
+            else
+                Lv_out = eval(obj.dual.Lv, obj.get_vars(), [t; x]);
+            end
         end
         
         function obj_out = obj_eval(obj, t, x)
             %evaluate objective
-            obj_out = eval(obj.objective, obj.get_vars(), [t; x]);
+            if obj.TIME_INDEP
+                obj_out = eval(obj.objective, obj.get_vars(), x);
+            else
+                obj_out = eval(obj.objective, obj.get_vars(), [t; x]);
+            end
         end
         
         function supp_out = supp_eval(obj, t, x)
             %is (t, x) in the support of the location?
-            supp_out =  all(eval(obj.supp, obj.get_vars(), [t; x]));
+            if obj.TIME_INDEP
+                supp_out =  all(eval(obj.supp, obj.get_vars(), [t; x]));
+            else
+                supp_out =  all(eval(obj.supp, obj.get_vars(), x));
+            end
         end
         
         function [event_eval, terminal, direction] = supp_event(obj, t, x)
@@ -279,7 +314,11 @@ classdef location < handle
             
             nn = [nn_init; -obj.dual.Lv; nn_term];
             
-            nn_out = eval(nn, obj.get_vars(), [t; x]);                                   
+            if obj.TIME_INDEP
+                nn_out = eval(nn, obj.get_vars(), x);                                   
+            else
+                nn_out = eval(nn, obj.get_vars(),  [t; x]);                                   
+            end
         end
         
         
