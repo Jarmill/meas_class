@@ -249,7 +249,7 @@ classdef peak_manager_hy < handle
             %the main call, the full peak program at the target order
             
             if nargin < 3
-                Tmax = 0;
+                Tmax = 1;
             end
             
             d = 2*order;
