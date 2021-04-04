@@ -1,11 +1,11 @@
-classdef meas_base < handle
-    %MEAS_BASE A measure used for 
+classdef meas_init < meas_base
+    %MEAS_INIT An initial measure
     %   Detailed explanation goes here
     
     properties
        
         %variables
-        vars = struct('t', [], 'x', []);
+        vars = struct('t', [], 'x', [], 'th');
         
         %measure of variables
         meas = [];

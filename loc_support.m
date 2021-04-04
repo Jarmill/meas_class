@@ -19,6 +19,7 @@ classdef loc_support
         
         TIME_INDEP = 0; %
         FREE_TERM = 1;  %free terminal time between 0 and Tmax
+        DIGITAL = 0;
         
         %state:
         %all space
@@ -41,16 +42,68 @@ classdef loc_support
     end
     
     methods
-        function obj = loc_support(vars)
+        
+        %% constructor
+        function obj = loc_support(vars, loc_ref)
             %LOC_SUPPORT Construct an instance of this class
-            %   Detailed explanation goes here
-            obj.vars = vars;
+            %   Detailed explanation goes here                       
+            
+            %iterate through variables 
+            varnames = fields(vars);
+            for i = 1:length(varnames)
+                curr_var = varnames{i};
+                obj.vars.(curr_var) = vars.(curr_var);
+            end
+            
+            if nargin == 2
+                %substitue all attributes of reference with new variables
+                %a constructor with copying and substitution
+                
+                %constants
+                obj.Tmax = loc_ref.Tmax;
+                obj.TIME_INDEP = loc_ref.TIME_INDEP; %
+                obj.FREE_TERM =  loc_ref.FREE_TERM;  %free terminal time between 0 and Tmax
+                obj.DIGITAL = loc_ref.DIGITAL; %
+                
+                %support sets
+                obj.X = subs_vars(loc_ref.X, loc_ref.vars.x, obj.vars.x);
+                obj.X_init = subs_vars(loc_ref.X_init, loc_ref.vars.x, obj.vars.x);
+                obj.X_term = subs_vars(loc_ref.X_term, loc_ref.vars.x, obj.vars.x);
+                
+                if iscell(loc_ref.X_sys)
+                    obj.X_sys = cell(length(loc_ref.X_sys), 1);
+                    for i = 1:length(loc_ref.X_sys)
+                        obj.X_sys{i} = subs_vars(loc_ref.X_sys{i}, loc_ref.vars.x, obj.vars.x);
+                    end
+                else
+                    obj.X_sys = subs_vars(loc_ref.X_sys, loc_ref.vars.x, obj.vars.x);
+                end
+                
+                obj.disturb = subs_vars(loc_ref.disturb, loc_ref.vars.w, obj.vars.w);
+                
+                obj.param = subs_vars(loc_ref.disturb, loc_ref.vars.th, obj.vars.th);
+                
+            end
+        end
+        
+        %% get variables
+        
+        function vars_out = get_vars(obj)
+            vars_out = [obj.vars.t;
+                        obj.vars.x;
+                        obj.vars.theta;
+                        obj.vars.w];
         end
         
         
-        %get time sets
-
-                
+        function vars_out = get_vars_box(obj)
+            vars_out = [obj.vars.t;
+                        obj.vars.x;
+                        obj.vars.theta;
+                        obj.vars.w;
+                        obj.vars.b];
+        end
+        
         %% get initial set
         
         function t_supp = get_t_supp_init(obj)
@@ -116,7 +169,7 @@ classdef loc_support
         end 
         
         function X_sys = get_X_sys_single(obj, X_sys_in)
-            if isempty(obj.X_term)
+            if isempty(X_sys_in)
                 X_sys = obj.X;
             else
                 X_sys = X_sys_in;
@@ -124,8 +177,9 @@ classdef loc_support
         end
         
         function supp_sys = supp_sys_pack(obj, X_sys_in)
+            %assumptions: systems are valid for all time
             supp_sys = [obj.get_t_supp_sys();
-                    X_sys_in;
+                    obj.get_X_sys_single(X_sys_in);
                     obj.param;
                     obj.disturb];    
         end
@@ -146,28 +200,11 @@ classdef loc_support
             else
                 supp_out = obj.supp_sys_pack(obj.X_sys);
 
-            end
-            
-                
+            end                            
         end
-
         
         
-        
-        
-%         function supp_out = get_supp(obj, include_disturb)
-%             if nargin == 1
-%                 include_disturb = 0;
-%             end
-%             
-%             if obj.TIME_INDEP
-%                 t_supp = 
-%         end
-%         function outputArg = method1(obj,inputArg)
-%             %METHOD1 Summary of this method goes here
-%             %   Detailed explanation goes here
-%             outputArg = obj.Property1 + inputArg;
-%         end
+                              
     end
 end
 

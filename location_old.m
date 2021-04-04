@@ -1,7 +1,8 @@
-classdef location < handle
-    %LOCATION A location (space) of a hybrid system
+classdef location_old < handle
+    %LOCATION_OLD A location (space) of a hybrid system
     %   includes descriptions of the space as well as measures
     
+    %does not use loc_support input
     properties
         %location number
         id; 
@@ -29,67 +30,30 @@ classdef location < handle
     end
     
     methods
-        function obj = location(id, loc_supp, f, objective)
+        function obj = location_old(id, vars, supp, supp0, f, objective)
             %Location Construct an instance of this class
             %   Detailed explanation goes here
             
             %fill in properties
             obj.id = id;
-%             obj.vars = vars;
-%             if ~isfield(vars, 't') || isempty(vars.t)
-%                 obj.vars.t = []; %time-independent
-%                 obj.loc_supp.TIME_INDEP = 1;            
-%             end
-
-            
-            obj.supp = loc_supp;
-            obj.vars = loc_supp.vars;
-            
-            %dynamics
-            if ~iscell(obj.f)
-                obj.f = {f};
-            else
-                obj.f = f;            
+            obj.vars = vars;
+            if ~isfield(vars, 't') || isempty(vars.t)
+                obj.vars.t = []; %time-independent
+                obj.TIME_INDEP = 1;            
             end
-            if nargin < 5                  
-                %by default, no objective
-                obj.objective = [];
-            else
-                obj.objective = objective;
+            obj.supp = supp;
+            
+            obj.f = f;            
+            obj.objective = objective;
+            
+            if ~isempty(supp0)
+                obj.meas_init = meas_base(obj.var_def('0', supp0));
             end
             
-            %TODO: replace meas_base with meas_init/term/occ to allow for
-            %uncertainty (theta, w, b)
-            
-            %initial measures
-            if ~isempty(obj.supp.X_init)
-                obj.meas_init = meas_base(obj.var_def('0', obj.supp.supp_init()));
-            end
-            
-            %terminal measures
             if ~isempty(objective)
-                 obj.meas_term = meas_base(obj.var_def('p', obj.supp.supp_term()));                
+                obj.meas_term = meas_base(obj.var_def('p', supp));
             end
-            
-            %systems (occupation measures)
-%             if iscell(obj.supp.X_sys)
-%                 X_sys = {obj.supp.X_sys};
-%             else
-%                 X_sys = obj.supp.X_sys;
-%             end
-            
-            Nsys = length(X_sys);
-            %TODO: replace with class subsystem
-            obj.meas_occ = cell(Nsys, 1);
-            for i = 1:Nsys
-                if isempty(X_sys{i})
-                    X_sys_curr = obj.supp.X;
-                else
-                    X_sys_curr = X_sys{i};
-                end
-                sys_pack = obj.supp.supp_sys_pack(X_sys_curr);
-                obj.meas_occ{i}  = meas_base(obj.var_def(['occ_', num2str(i)], sys_pack));                                            
-            end
+            obj.meas_occ  = meas_base(obj.var_def('occ', supp));                                            
         end
         
         function vars_out = get_vars(obj)
@@ -141,18 +105,7 @@ classdef location < handle
             if ~isempty(obj.meas_term)
                 Ay_term = -obj.meas_term.mom_monom(d);
             end
-            
-            %replace with a subsystem call
-            Ay_occ = 0;
-            for i = 1:length(obj.meas_occ)
-                if obj.loc_supp.DIGITAL
-                    Ay_curr = obj.meas_occ{i}.mom_push(d, obj.vars, f{i}) - ...
-                              obj.meas_occ{i}.mom_monom(d);
-                else
-                    Ay_curr = obj.meas_occ{i}.mom_lie(d, obj.vars, f{i});
-                end
-                Ay_occ  =  Ay_occ + Ay_curr;
-            end
+            Ay_occ  =  obj.meas_occ.mom_lie(d, obj.vars, f);
             
             %TODO: Digital dynamics
             %Ay_occ  =  obj.meas_occ.mom_push(d, obj.vars, f);
@@ -277,7 +230,7 @@ classdef location < handle
         %it may be worthwhile to set location_time_indep as its own class
         function f_out = f_eval(obj, t, x)
             %evaluate v
-            if obj.loc_supp.TIME_INDEP
+            if obj.TIME_INDEP
                 f_out = eval(obj.f, obj.get_vars(), x);
             else 
                 f_out = eval(obj.f, obj.get_vars(), [t; x]);
@@ -286,7 +239,7 @@ classdef location < handle
         
         function v_out = v_eval(obj, t, x)
             %evaluate v
-            if obj.loc_supp.TIME_INDEP
+            if obj.TIME_INDEP
                 v_out = eval(obj.dual.v, obj.get_vars(), x);
             else
                 v_out = eval(obj.dual.v, obj.get_vars(), [t; x]);
@@ -295,7 +248,7 @@ classdef location < handle
         
         function Lv_out = Lv_eval(obj, t, x)
             %evaluate Lv
-            if obj.loc_supp.TIME_INDEP
+            if obj.TIME_INDEP
                 Lv_out = eval(obj.dual.Lv, obj.get_vars(), x);
             else
                 Lv_out = eval(obj.dual.Lv, obj.get_vars(), [t; x]);
@@ -304,7 +257,7 @@ classdef location < handle
         
         function obj_out = obj_eval(obj, t, x)
             %evaluate objective
-            if obj.loc_supp.TIME_INDEP
+            if obj.TIME_INDEP
                 obj_out = eval(obj.objective, obj.get_vars(), x);
             else
                 obj_out = eval(obj.objective, obj.get_vars(), [t; x]);
@@ -313,7 +266,7 @@ classdef location < handle
         
         function supp_out = supp_eval(obj, t, x)
             %is (t, x) in the support of the location?
-            if obj.loc_supp.TIME_INDEP
+            if obj.TIME_INDEP
                 supp_out =  all(eval(obj.supp, obj.get_vars(), [t; x]));
             else
                 supp_out =  all(eval(obj.supp, obj.get_vars(), x));
@@ -362,7 +315,7 @@ classdef location < handle
             
             nn = [nn_init; -obj.dual.Lv; nn_term];
             
-            if obj.loc_supp.TIME_INDEP
+            if obj.TIME_INDEP
                 nn_out = eval(nn, obj.get_vars(), x);                                   
             else
                 nn_out = eval(nn, obj.get_vars(),  [t; x]);                                   

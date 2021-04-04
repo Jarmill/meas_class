@@ -26,3 +26,17 @@ lsupp.disturb = W;
 X0 = lsupp.supp_init();
 Xp = lsupp.supp_term();
 Xs = lsupp.supp_sys();
+
+%% copy
+mpol('tq', 1, 1)
+mpol('xq', 2, 1)
+mpol('thq', 1, 1)
+mpol('wq', 2, 1)
+
+varsq = struct;
+varsq.t = tq;
+varsq.x = xq;
+varsq.th = thq;
+varsq.w = wq;
+
+qsupp = loc_support(varsq, lsupp);
