@@ -169,7 +169,7 @@ classdef loc_support
         function supp_out = supp_term(obj)
             %initial set 
             supp_out = [obj.get_t_supp_term();
-                        obj.get_X_init();
+                        obj.get_X_term();
                         obj.param];                    
         end
         
@@ -188,6 +188,18 @@ classdef loc_support
                 X_sys = obj.X;
             else
                 X_sys = X_sys_in;
+            end
+        end
+        
+        function X_sys = get_X_sys_ind(obj, ind)
+            if isempty(obj.X_sys)
+                X_sys = obj.X;
+            else
+                if iscell(obj.X_sys)
+                    X_sys = obj.X_sys{ind};
+                else
+                    X_sys = obj.X_sys;
+                end
             end
         end
         
@@ -216,6 +228,15 @@ classdef loc_support
                 supp_out = obj.supp_sys_pack(obj.X_sys);
 
             end                            
+        end
+        
+        function obj = set_box(obj, bounding_box)
+            %set bounding box for X
+            nx = length(obj.vars.x);
+            [box, box_center, box_half] = box_process(nx, bounding_box);
+            
+            X_box = (obj.vars.x - box_center).^2 <= box_half.^2;
+            obj.X = X_box;                        
         end
         
         

@@ -87,7 +87,13 @@ classdef meas_base < handle
             f_new = subs_vars(f_old, [vars_old.t; vars_old.x; vars_old.th; vars_old.w], ...
                                 [obj.vars.t; obj.vars.x; obj.vars.th; obj.vars.w]);
         end
-                
+               
+        function f_new = var_sub_end(obj, vars_old, f_old)
+            %substitute variables of measures in for f_old            
+            f_new = subs_vars(f_old, [vars_old.t; vars_old.x; vars_old.th], ...
+                                [obj.vars.t; obj.vars.x; obj.vars.th]);
+        end
+              
         %% measures
         function mass_out = mass(obj)
             %MASS return the mass (moment of 1) of the measure           

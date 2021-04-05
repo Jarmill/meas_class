@@ -52,13 +52,41 @@ classdef location < handle
             else
                 obj.f = f;            
             end
+           
+            
+            if ~iscell(obj.supp.X_sys)
+                obj.supp.X_sys = {obj.supp.X_sys};
+            else
+                obj.supp.X_sys = obj.supp.X_sys;            
+            end
                        
-            if nargin < 5                  
+            if nargin < 4                  
                 %by default, no objective
                 obj.objective = [];
             else
                 obj.objective = objective;
             end
+            
+
+            %systems (occupation measures)
+            Nsys = length(obj.f);
+
+            
+            if ~obj.supp.TIME_INDEP
+                %scale for time if time is a variable
+                Tmax = obj.supp.Tmax;
+                for i = 1:Nsys
+                    obj.f{i} = obj.f{i}*Tmax;
+                end
+                obj.supp.Tmax = 1;
+            end
+            
+            obj.sys = cell(Nsys, 1);
+            %subsystems
+            for i = 1:Nsys
+                obj.sys{i} = subsystem(obj.supp, obj.f{i}, i, id);
+            end
+            
             
             %TODO: add facility for multiple initial/final regions (unions)
             
@@ -72,13 +100,7 @@ classdef location < handle
                  obj.meas_term = obj.meas_def_end('p', obj.supp.supp_term());                
             end
             
-            %systems (occupation measures)
-            Nsys = length(obj.f);
-            obj.sys = cell(Nsys, 1);
-            %subsystems
-            for i = 1:Nsys
-                obj.sys{i} = subsystem(loc_supp, obj.f{i}, i, id);
-            end
+
                        
         end
         
@@ -105,7 +127,7 @@ classdef location < handle
                 
                 if ~isempty(curr_var)
                     %declare a new variable
-                    new_name = [curr_name, obj.prefix, suffix];
+                    new_name = [curr_name, suffix];
                     mpol(new_name, length(curr_var), 1);
                     %load the new variable into vars_new
                     vars_new.(curr_name) = eval(new_name);
@@ -116,7 +138,7 @@ classdef location < handle
            
                 %create new support as well
 %                 supp_ref = obj.supp.supp_sys_pack(obj.supp.X_sys);
-                supp_new = subs_vars(supp_ref, [obj.supp.t; obj.supp.x; obj.supp.th], ...
+                supp_new = subs_vars(supp_ref, [obj.vars.t; obj.vars.x; obj.vars.th], ...
                                 [vars_new.t; vars_new.x; vars_new.th]);
            
             
@@ -154,6 +176,7 @@ classdef location < handle
         end
         
         function [cons, len_abscont] = abscont_con(obj, d)
+            %constraint for absolute continuity in box-disturbance
             cons = [];
             len_abscont = zeros(length(obj.sys), 1);
             for i = 1:length(obj.sys)
@@ -185,7 +208,7 @@ classdef location < handle
             %subsystem measure support
             sys_supp = [];
             for i = 1:length(obj.sys)
-                sys_supp = [sys_supp; obj.sys.get_supp()];
+                sys_supp = [sys_supp; obj.sys{i}.get_supp()];
             end
             
             supp_con_out = [init_supp;
@@ -203,10 +226,10 @@ classdef location < handle
             if isempty(objective)
                 obj_max = 0;
             elseif length(objective) == 1    
-                obj_subs = obj.meas_term.var_sub(obj.vars, objective);
+                obj_subs = obj.meas_term.var_sub_end(obj.vars, objective);
                 obj_max = mom(obj_subs);                            
             else
-                obj_subs = obj.meas_term.var_sub(obj.vars, objective);
+                obj_subs = obj.meas_term.var_sub_end(obj.vars, objective);
                 q_name = ['q_', num2str(obj.id)];
                 mpol(q_name, 1, 1);
                 q = eval(q_name);

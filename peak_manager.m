@@ -5,7 +5,8 @@ classdef peak_manager < location
     %   may reverse this
     
     properties
-        loc;        
+%         loc;        
+        solver = 'mosek';
     end
     
     methods
@@ -43,7 +44,7 @@ classdef peak_manager < location
             %get moment constraints
             liou_con = -(obj.liou_con(d)) == 0;
             [objective, obj_con] = obj.objective_con(d);
-            [abscont_con, len_abscont] = obj.abscont_con(d);
+            [abscont_con, len_abscont] = obj.abscont_con(d) == 0;
 
             %finalize moment constraints
             
@@ -54,14 +55,14 @@ classdef peak_manager < location
             %than Tmax. Implement/fix this?
             %TODO: get this done
                 
-            len_liou = length(liou_con_all);
+            len_liou = length(liou_con);
             
             mom_con = [liou_con; mass_init_con; abscont_con; obj_con];  
 
 
         end                    
     
-        function [sol, dual_rec] = peak_solve(obj, objective, mom_con,supp_con)
+        function sol = peak_solve(obj, objective, mom_con,supp_con)
             %PEAK_SOLVE formulate and solve peak estimation program from
             %constraints and objective    
 

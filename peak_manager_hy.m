@@ -120,7 +120,9 @@ classdef peak_manager_hy < handle
             else
                 % mass_init_sum == 0 eliminates the constraint when there
                 % is one location. keep it in.
-                mass_occ_con = (mass_occ_sum - Tmax == 0);
+                %TODO: confirm this behavior, check how this impacts
+                %indexing and dual recovery
+                mass_occ_con = (mass_occ_sum  <= Tmax);
             end
             
             

@@ -39,13 +39,13 @@ classdef subsystem
             obj.sys_id = sys_id;
             obj.prefix = ['_', num2str(sys_id), '_'];
             if ~isempty(loc_id)
-                obj.prefix = [num2str(loc_id), '_', obj.prefix];
+                obj.prefix = [num2str(loc_id), obj.prefix];
             end
             
             %support            
             obj.supp = loc_supp;            
             obj.vars = loc_supp.vars;
-            obj.supp.X_sys = obj.supp.X_sys{sys_id};
+            obj.supp.X_sys = obj.supp.get_X_sys_ind(sys_id);
             
             %occupation measure definition
             obj.f = f;
@@ -161,7 +161,7 @@ classdef subsystem
                 mom_comp = obj.meas_comp{i}.mom_monom(d);
                 
                 %absolute continuity constraint
-                Ay_curr = mom_occ == mom_box + mom_comp;
+                Ay_curr = -mom_occ + mom_box + mom_comp;
                 Ay = [Ay; Ay_curr]; 
             end
         end
