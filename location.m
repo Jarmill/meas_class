@@ -9,10 +9,11 @@ classdef location < handle
         %measures
         meas_init;
         meas_term;
-        meas_occ;
+        sys;
         
         %variables
-        vars = struct('t', [], 'x', []);
+%         vars = struct('t', [], 'x', []);
+        vars = struct('t', [], 'x', [], 'th', [], 'w', [], 'b', []);
         cost_q = []; %multiple costs
         supp;   %support
         
@@ -51,6 +52,7 @@ classdef location < handle
             else
                 obj.f = f;            
             end
+                       
             if nargin < 5                  
                 %by default, no objective
                 obj.objective = [];
@@ -58,79 +60,77 @@ classdef location < handle
                 obj.objective = objective;
             end
             
-            %TODO: replace meas_base with meas_init/term/occ to allow for
-            %uncertainty (theta, w, b)
+            %TODO: add facility for multiple initial/final regions (unions)
             
             %initial measures
             if ~isempty(obj.supp.X_init)
-                obj.meas_init = meas_base(obj.var_def('0', obj.supp.supp_init()));
+                obj.meas_init = obj.meas_def_end('0', obj.supp.supp_init());
             end
             
             %terminal measures
             if ~isempty(objective)
-                 obj.meas_term = meas_base(obj.var_def('p', obj.supp.supp_term()));                
+                 obj.meas_term = obj.meas_def_end('p', obj.supp.supp_term());                
             end
             
             %systems (occupation measures)
-%             if iscell(obj.supp.X_sys)
-%                 X_sys = {obj.supp.X_sys};
-%             else
-%                 X_sys = obj.supp.X_sys;
-%             end
-            
-            Nsys = length(X_sys);
-            %TODO: replace with class subsystem
-            obj.meas_occ = cell(Nsys, 1);
+            Nsys = length(obj.f);
+            obj.sys = cell(Nsys, 1);
+            %subsystems
             for i = 1:Nsys
-                if isempty(X_sys{i})
-                    X_sys_curr = obj.supp.X;
-                else
-                    X_sys_curr = X_sys{i};
-                end
-                sys_pack = obj.supp.supp_sys_pack(X_sys_curr);
-                obj.meas_occ{i}  = meas_base(obj.var_def(['occ_', num2str(i)], sys_pack));                                            
+                obj.sys{i} = subsystem(loc_supp, obj.f{i}, i, id);
             end
+                       
+        end
+        
+        function vars_out = get_vars_end(obj)
+            %GET_VARS_END variables at endpoint measures
+            %   initial and terminal, without time-dependent
+            vars_out = [obj.vars.t; obj.vars.x; obj.vars.th];
         end
         
         function vars_out = get_vars(obj)
             %GET_VARS add more variables as necessary
-            vars_out = [obj.vars.t; obj.vars.x];
+            vars_out = [obj.vars.t; obj.vars.x; obj.vars.th; obj.vars.w];
         end
         
-        function [vars_new] = var_def(obj, suffix, supp_old)
-            %VAR_DEF create new variables 't[suffix]_id',
-            %'x[suffix]_id
-            
-            if isempty(obj.vars.t)
-                t_new = [];
-            else
-                tname = ['t', suffix, '_', num2str(obj.id)];                       
-                mpol(tname, 1, 1);
-                t_new = eval(tname);
+        %% measure definition
+        function meas_new = meas_def_end(obj, suffix, supp_ref)           
+            %declare a variable for each initial or terminal measure
+            %does not include 'w' or 'b' (time-dependent inputs)
+            vars_new = struct('t', [], 'x', [], 'th', []);           
+            varnames = fields(vars_new);
+            for i = 1:length(varnames)
+                curr_name = varnames{i};
+                curr_var = obj.vars.(curr_name);
+                
+                if ~isempty(curr_var)
+                    %declare a new variable
+                    new_name = [curr_name, obj.prefix, suffix];
+                    mpol(new_name, length(curr_var), 1);
+                    %load the new variable into vars_new
+                    vars_new.(curr_name) = eval(new_name);
+                end
+%                 obj.vars.(curr_var) = vars.(curr_var);
             end
             
-            xname = ['x', suffix, '_', num2str(obj.id)];
-            mpol(xname, length(obj.vars.x), 1);
-                        
-            x_new = eval(xname);
+           
+                %create new support as well
+%                 supp_ref = obj.supp.supp_sys_pack(obj.supp.X_sys);
+                supp_new = subs_vars(supp_ref, [obj.supp.t; obj.supp.x; obj.supp.th], ...
+                                [vars_new.t; vars_new.x; vars_new.th]);
+           
             
-            vars_new= struct('t', t_new, 'x', x_new);
-            
-            if nargin == 3
-                vars_new.supp = subs_vars(supp_old, obj.get_vars(), ...
-                                [t_new; x_new]);
-            end
+            %define the measure
+            meas_new = meas_base(vars_new, supp_new);
         end
+        
         
         %% Constraints
-        function cons = liou_con(obj, d, f)
+        function cons = liou_con(obj, d)
             %LIOU_CON generate liouville constraint within location
             %
             %do not yet set this equal to zero (arithmetic operations not
             %are defined for constraints)
-            if nargin == 2
-                f = obj.f;
-            end
             
             Ay_init = 0;
             if ~isempty(obj.meas_init)
@@ -142,40 +142,55 @@ classdef location < handle
                 Ay_term = -obj.meas_term.mom_monom(d);
             end
             
-            %replace with a subsystem call
+            %TODO replace with a subsystem call
             Ay_occ = 0;
-            for i = 1:length(obj.meas_occ)
-                if obj.loc_supp.DIGITAL
-                    Ay_curr = obj.meas_occ{i}.mom_push(d, obj.vars, f{i}) - ...
-                              obj.meas_occ{i}.mom_monom(d);
-                else
-                    Ay_curr = obj.meas_occ{i}.mom_lie(d, obj.vars, f{i});
-                end
+            for i = 1:length(obj.sys)
+
+                Ay_curr = obj.sys{i}.cons_liou(d);
                 Ay_occ  =  Ay_occ + Ay_curr;
             end
             
-            %TODO: Digital dynamics
-            %Ay_occ  =  obj.meas_occ.mom_push(d, obj.vars, f);
             cons = Ay_init + Ay_term + Ay_occ;
         end
         
+        function [cons, len_abscont] = abscont_con(obj, d)
+            cons = [];
+            len_abscont = zeros(length(obj.sys), 1);
+            for i = 1:length(obj.sys)
+                curr_abscont = obj.sys{i}.abscont(d);
+                cons = [cons; curr_abscont];
+                len_abscont(i) = length(curr_abscont);
+            end
+        end
+        
+        
         function supp_con_out = supp_con(obj)
+            %SUPP_CON get support constraints of measures
             
+            
+            %terminal measure support 
             if ~isempty(obj.meas_term)
                 term_supp =  obj.meas_term.supp;
             else
                 term_supp =  [];
             end
             
+            %initial measure support 
             if ~isempty(obj.meas_init)
                 init_supp =  obj.meas_init.supp;
             else
                 init_supp =  [];
             end
             
+            %subsystem measure support
+            sys_supp = [];
+            for i = 1:length(obj.sys)
+                sys_supp = [sys_supp; obj.sys.get_supp()];
+            end
+            
             supp_con_out = [init_supp;
                             term_supp;
-                            obj.meas_occ.supp];
+                            sys_supp];
         end
         
         function [obj_max, obj_con] = objective_con(obj, d, objective)
@@ -217,7 +232,7 @@ classdef location < handle
             if ~isempty(obj.meas_term)
                 s_out.term = obj.meas_term.mmat_corner();
             end
-            s_out.occ  = obj.meas_occ.mmat_corner();
+%             s_out.occ  = obj.meas_occ.mmat_corner();
         end
         
         function [optimal, mom_out, corner] = recover(obj, tol)
@@ -255,6 +270,8 @@ classdef location < handle
         function obj = dual_process(obj, order, v, beta, gamma)
              %DUAL_PROCESS turn the dual variables from solution into 
              %polynomials and interpretable quantities
+             
+             %TODO: fix this so that boxes can be used
              
              %numeric quantities
              obj.dual.solved = 1;
@@ -313,11 +330,11 @@ classdef location < handle
         
         function supp_out = supp_eval(obj, t, x)
             %is (t, x) in the support of the location?
-            if obj.loc_supp.TIME_INDEP
-                supp_out =  all(eval(obj.supp, obj.get_vars(), [t; x]));
-            else
-                supp_out =  all(eval(obj.supp, obj.get_vars(), x));
-            end
+%             if obj.loc_supp.TIME_INDEP
+%                 supp_out =  all(eval(obj.supp.X, obj.get_vars(), [t; x]));
+%             else
+                supp_out =  all(eval(obj.supp.X, obj.vars.x, x));
+%             end
         end
         
         function [event_eval, terminal, direction] = supp_event(obj, t, x)

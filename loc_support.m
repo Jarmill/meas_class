@@ -4,7 +4,7 @@ classdef loc_support
     
     properties
         %variables of this location
-        vars = struct('t', [], 'x', [], 'theta', [], 'w', [], 'b', []);
+        vars = struct('t', [], 'x', [], 'th', [], 'w', [], 'b', []);
         %    t:  time
         %    x:  state
         %theta:  time-independent uncertainty
@@ -44,9 +44,17 @@ classdef loc_support
     methods
         
         %% constructor
-        function obj = loc_support(vars, loc_ref)
+        function obj = loc_support(vars, loc_ref, sys_id)
             %LOC_SUPPORT Construct an instance of this class
-            %   Detailed explanation goes here                       
+            %INPUT: 
+            %   vars:   variables to define support
+            %   all other attributes are defined outside the constructor
+            %
+            %   REFERENCE:  substitute in quantities in reference with
+            %               variables in vars
+            %   loc_ref:    reference location
+            %   sys_id:     system in reference to examine
+            
             
             %iterate through variables 
             varnames = fields(vars);
@@ -55,7 +63,7 @@ classdef loc_support
                 obj.vars.(curr_var) = vars.(curr_var);
             end
             
-            if nargin == 2
+            if nargin > 1
                 %substitue all attributes of reference with new variables
                 %a constructor with copying and substitution
                 
@@ -70,13 +78,20 @@ classdef loc_support
                 obj.X_init = subs_vars(loc_ref.X_init, loc_ref.vars.x, obj.vars.x);
                 obj.X_term = subs_vars(loc_ref.X_term, loc_ref.vars.x, obj.vars.x);
                 
-                if iscell(loc_ref.X_sys)
+                if iscell(loc_ref.X_sys) && (nargin == 2)
+                    %copy all subsystems
                     obj.X_sys = cell(length(loc_ref.X_sys), 1);
                     for i = 1:length(loc_ref.X_sys)
                         obj.X_sys{i} = subs_vars(loc_ref.X_sys{i}, loc_ref.vars.x, obj.vars.x);
                     end
                 else
-                    obj.X_sys = subs_vars(loc_ref.X_sys, loc_ref.vars.x, obj.vars.x);
+                    %copy only one subsystem
+                    if nargin == 3
+                        %only the subsystem required
+                        obj.X_sys = subs_vars(loc_ref.X_sys{i}, loc_ref.vars.x, obj.vars.x);
+                    else
+                        obj.X_sys = subs_vars(loc_ref.X_sys, loc_ref.vars.x, obj.vars.x);
+                    end
                 end
                 
                 obj.disturb = subs_vars(loc_ref.disturb, loc_ref.vars.w, obj.vars.w);
@@ -91,7 +106,7 @@ classdef loc_support
         function vars_out = get_vars(obj)
             vars_out = [obj.vars.t;
                         obj.vars.x;
-                        obj.vars.theta;
+                        obj.vars.th;
                         obj.vars.w];
         end
         
@@ -99,7 +114,7 @@ classdef loc_support
         function vars_out = get_vars_box(obj)
             vars_out = [obj.vars.t;
                         obj.vars.x;
-                        obj.vars.theta;
+                        obj.vars.th;
                         obj.vars.w;
                         obj.vars.b];
         end
