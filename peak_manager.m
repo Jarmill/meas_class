@@ -1,24 +1,22 @@
-classdef peak_manager < location
+classdef peak_manager
     %PEAK_MANAGER standard peak estimation manager    
-    %   no need to manage multiple locations,
-    %   so this is a subclass of location
+    %only a single location 'loc'
     %   may reverse this
     
     properties
-%         loc;        
+        loc;        
         solver = 'mosek';
     end
     
     methods
         function obj = peak_manager(loc_supp, f, objective)
             %PEAK_MANAGER Construct an instance of this class
-
             
             if nargin == 2
                 objective = 0;
             end
 
-            obj@location(1, loc_supp, f, objective)
+            obj.loc = location(1, loc_supp, f, objective);
             
             obj.solver = 'mosek';
         end
@@ -38,18 +36,18 @@ classdef peak_manager < location
             %   supp_con:   support constraints (@supcon)
             %   len_liou:   number of liouville constraints (uint32)
 
-            supp_con = obj.supp_con();       %support constraint     
+            supp_con = obj.loc.supp_con();       %support constraint     
             mass_init_sum = 0;   %mass of initial measure should be 1
                         
             %get moment constraints
-            liou_con = -(obj.liou_con(d)) == 0;
-            [objective, obj_con] = obj.objective_con(d);
-            [abscont_con, len_abscont] = obj.abscont_con(d) == 0;
+            liou_con = -(obj.loc.liou_con(d));
+            [objective, obj_con] = obj.loc.objective_con(d);
+            [abscont_con, len_abscont] = obj.loc.abscont_con(d);
 
             %finalize moment constraints
             
             %mass of initial measure sums to one
-            mass_init_con = (obj.mass_init() - 1 == 0);
+            mass_init_con = (obj.loc.mass_init() - 1 == 0);
 
             %time independent: mass of sum of occupation measures are less
             %than Tmax. Implement/fix this?
@@ -57,7 +55,7 @@ classdef peak_manager < location
                 
             len_liou = length(liou_con);
             
-            mom_con = [liou_con; mass_init_con; abscont_con; obj_con];  
+            mom_con = [liou_con==0; abscont_con==0; obj_con; mass_init_con];  
 
 
         end                    
@@ -130,22 +128,7 @@ classdef peak_manager < location
                 
                 loc_curr.dual_process(order, v_coeff, beta_curr, gamma);
                 
-            end
-            
-            %TODO: dual variable for Tmax
-%             if isempty(obj.locations{1}.vars.t)
-%                 %time independent hack
-%                 alpha = rec_ineq(cost_con_offset + i);
-%                 cost_con_offset = cost_con_offset + 1;
-%                 
-%                 %store the dual variable alpha somewhere
-%             end
-            
-            for i = 1:length(obj.guards)
-%                 obj.guards{i}.zeno_dual = rec_ineq(cost_con_offset + i);
-                obj.guards{i}.dual_process(rec_ineq(cost_con_offset + i));
-            end
-            
+            end                       
             
         end
         
@@ -164,7 +147,7 @@ classdef peak_manager < location
             
 %             gamma_ind =  length(mom_con) - length(obj.guards);
             gamma = sol.dual_rec{1}(len_liou+1);
-            obj.dual_process(order, sol.dual_rec, gamma);
+%             obj.dual_process(order, sol.dual_rec, gamma);
             
             %TODO: dual process the abscont zeta functions 
         end       
@@ -180,7 +163,7 @@ classdef peak_manager < location
             for i = 1:Npt
                 tcurr = t(:, i);               
                 xcurr = x(:, i);                               
-                event_eval = obj.supp_eval(t, x);
+                event_eval = obj.loc.supp_eval(t, x);
             end
                         
             %stop integrating when the system falls outside support
