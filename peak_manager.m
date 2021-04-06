@@ -60,9 +60,11 @@ classdef peak_manager
 
         end                    
     
-        function sol = peak_solve(obj, objective, mom_con,supp_con)
+        function sol = peak_solve(obj, objective, mom_con,supp_con, minquery)
             %PEAK_SOLVE formulate and solve peak estimation program from
             %constraints and objective    
+            
+            %TODO: incorporate minquery into maximin (minimax) formulation
 
             mset('yalmip',true);
             %make sure the solution is precise
@@ -70,7 +72,13 @@ classdef peak_manager
                 'mosek.MSK_DPAR_BASIS_TOL_X', 1e-8, 'mosek.MSK_DPAR_INTPNT_CO_TOL_MU_RED', 1e-9, ...
                 'mosek.MSK_DPAR_INTPNT_TOL_PATH', 1e-6));
             % https://docs.mosek.com/9.2/pythonfusion/parameters.html
-            P = msdp(max(objective), mom_con, supp_con);
+            
+            
+            if nargin == 5
+                P = msdp(min(objective), mom_con, supp_con);
+            else
+                P = msdp(max(objective), mom_con, supp_con);
+            end
 
             sol = struct;
             [sol.status,sol.obj_rec, ~,sol.dual_rec]= msol(P);        

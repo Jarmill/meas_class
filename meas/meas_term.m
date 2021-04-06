@@ -1,6 +1,6 @@
-classdef meas_init
-    %MEAS_INIT A container of initial measures
-    %   realizes unions of initial measures for a multi-part X_init
+classdef meas_term
+    %MEAS_INIT A container of terminal measures
+    %   realizes unions of terminal measures for a multi-part X_term 
     
     properties
        
@@ -9,17 +9,17 @@ classdef meas_init
         
         %measure of variables
         meas = [];
-        N0;
+        NT;
         
         %support of measures
-        X0 = [];
-        TH0 = [];      
+        XT = [];
+        THT = [];      
     end
     
     methods
         
         %% constructor
-        function obj = meas_init(loc_supp, loc_id)
+        function obj = meas_term(loc_supp, loc_id)
             %MEAS_INIT Construct a measure
             %include the variables and the support         
             
@@ -34,80 +34,76 @@ classdef meas_init
             
             
             %process initial region
-            X0 = loc_supp.get_X_init();
+            XT = loc_supp.get_X_term();
             
-            %N0: number of initial regions
-            if isnumeric(X0)
-                N0 = size(X0, 2);
-                X0_cell = cell(N0, 1);
-                for i = 1:N0
-                    X0_cell{i} = (obj.vars.x == X0(:, i));
+            %NT: number of initial regions
+            if isnumeric(XT)
+                NT = size(XT, 2);
+                XT_cell = cell(NT, 1);
+                for i = 1:NT
+                    XT_cell{i} = (obj.vars.x == XT(:, i));
                 end
-                X0 = X0_cell;
+                XT = XT_cell;
             else
-                if iscell(X0)
-                    X0_cell = X0;
+                if iscell(XT)
+                    XT_cell = XT;
                 else
-                    X0_cell = {X0};
+                    XT_cell = {XT};
                 end
-                %X0 is a cell
+                %XT is a cell
                 %could make this less restrictive later
-                N0 = length(X0_cell);
+                NT = length(XT_cell);
                 
             end
             
-            %process disturbance TH0
-            TH0 = loc_supp.param;
-            if ~isempty(TH0)                
-                if isnumeric(TH0)
-                    NTH0 = size(TH0, 2);
-                    TH0_cell = cell(NTH0 , 1);
-                    for i = 1:NTH0
-                        TH0_cell{i} = (obj.vars.th == TH0(:, i));
+            %process disturbance THT
+            THT = loc_supp.param;
+            if ~isempty(THT)                
+                if isnumeric(THT)
+                    NTHT = size(THT, 2);
+                    THT_cell = cell(NTHT , 1);
+                    for i = 1:NTHT
+                        THT_cell{i} = (obj.vars.th == THT(:, i));
                     end
                 else    
-                    if iscell(TH0)
-                        TH0_cell = TH0;
+                    if iscell(THT)
+                        THT_cell = THT;
                     else
-                        TH0_cell = {TH0};
+                        THT_cell = {THT};
                     end
-                    NTH0 = length(TH0);
+                    NTHT = length(THT);
                 end
                 
-                if (N0 > 1) && (NTH0 == 1)
-                    TH0_cell2 = cell(N0, 1);
-                    for i = 1:N0
-                        TH0_cell2{i} = TH0;
+                if (NT > 1) && (NTHT == 1)
+                    THT_cell2 = cell(NT, 1);
+                    for i = 1:NT
+                        THT_cell2{i} = THT;
                     end
-                    TH0_cell = TH0_cell2;
+                    THT_cell = THT_cell2;
                 end
             else
-                TH0_cell = cell(N0, 1);
+                THT_cell = cell(NT, 1);
             end
             
             %now form measures
-            obj.meas = cell(N0, 1);
-            for i = 1:N0
-                suffix = '_init';
-                if N0 > 1
+            obj.meas = cell(NT, 1);
+            tsupp =loc_supp.get_t_supp_term();
+            for i = 1:NT
+                suffix = '_term';
+                if NT > 1
                     suffix = ['_', num2str(i), suffix];
                 end
                 if ~isempty(loc_id)
                     suffix = ['_', num2str(loc_id), suffix];
                 end
-%                 suffix = ['_', num2str(loc_id), '_', num2str(i), '_init'];
-                supp_curr = [obj.vars.t==0; X0_cell{i}; TH0_cell{i}];
+
+                supp_curr = [tsupp ; XT_cell{i}; THT_cell{i}];
                 obj.meas{i} = obj.meas_def(suffix, supp_curr);
             end
             
-            obj.N0 = N0;
-            obj.X0 = X0_cell;
-            obj.TH0 = TH0_cell;
-                       
-            
-%             obj.vars = struct('t', vars.t, 'x', vars.x);        
-%             obj.meas = meas([obj.vars.t; obj.vars.x]);            
-%             obj.supp = supp;
+            obj.NT = NT;
+            obj.XT = XT_cell;
+            obj.THT = THT_cell;                                 
         end
 
         
@@ -116,6 +112,7 @@ classdef meas_init
         %monomials: gloptipoly cannot add together monomials from different
         %measures
                 
+        
         %% measures
         function meas_new = meas_def(obj, suffix, supp_ref)           
             %declare a variable for each measure (index ind in the union)
@@ -146,21 +143,33 @@ classdef meas_init
             meas_new = meas_base(vars_new, supp_new);
         end
         
+        %% support
         function supp_out = supp(obj)
             %get the support of all measures
             supp_out = [];
-            for i = 1:obj.N0
+            for i = 1:obj.NT
                 supp_out = [supp_out; obj.meas{i}.supp];
             end
         end
         
+        %% moments
+        
         function mass_out = mass(obj)
-            %MASS return the mass (moment of 1) of the measure           
+            %MASS returns the mass (moment of 1) of the measure           
             mass_out = 0;
-            for i = 1:obj.N0
+            for i = 1:obj.NT
                 mass_out = mass_out + obj.meas{i}.mass();
             end
-        end                         
+        end   
+        
+        function f_new = var_sub_mom(obj, vars_old, f_old)
+            %VAR_SUB_MOM returns the moment of f_old with respect to all
+            %measures in this terminal set union
+            f_new = 0;
+            for i = 1:obj.NT
+                f_new = f_new + mom(obj.meas{i}.var_sub_end(vars_old, f_old));
+            end
+        end   
         
         function mmmon_out = mom_monom(obj, dmin, dmax)
             %MOM_MMON moments of monomials
@@ -170,7 +179,7 @@ classdef meas_init
             end
             
             mmmon_out = 0;
-            for i = 1:obj.N0
+            for i = 1:obj.NT
                 mmmon_out = mmmon_out + obj.meas{i}.mom_monom(dmin, dmax);
             end            
         end

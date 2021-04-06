@@ -7,8 +7,8 @@ classdef location < handle
         id; 
         
         %measures
-        meas_init;
-        meas_term;
+        init;
+        term;
         sys;
         
         %variables
@@ -92,12 +92,14 @@ classdef location < handle
             
             %initial measures
             if ~isempty(obj.supp.X_init)
-                obj.meas_init = obj.meas_def_end('0', obj.supp.supp_init());
-            end
+%                 obj.init = obj.meas_def_end('0', obj.supp.supp_init());
+                obj.init = meas_init(obj.supp, id);
+            end            
             
             %terminal measures
             if ~isempty(objective)
-                 obj.meas_term = obj.meas_def_end('p', obj.supp.supp_term());                
+%                  obj.term = obj.meas_def_end('p', obj.supp.supp_term());                
+                obj.term = meas_term(obj.supp, id);             
             end
             
 
@@ -155,13 +157,13 @@ classdef location < handle
             %are defined for constraints)
             
             Ay_init = 0;
-            if ~isempty(obj.meas_init)
-                Ay_init =  obj.meas_init.mom_monom(d);
+            if ~isempty(obj.init)
+                Ay_init =  obj.init.mom_monom(d);
             end
             
             Ay_term = 0;
-            if ~isempty(obj.meas_term)
-                Ay_term = -obj.meas_term.mom_monom(d);
+            if ~isempty(obj.term)
+                Ay_term = -obj.term.mom_monom(d);
             end
             
             %TODO replace with a subsystem call
@@ -192,15 +194,15 @@ classdef location < handle
             
             
             %terminal measure support 
-            if ~isempty(obj.meas_term)
-                term_supp =  obj.meas_term.supp;
+            if ~isempty(obj.term)
+                term_supp =  obj.term.supp();
             else
                 term_supp =  [];
             end
             
             %initial measure support 
-            if ~isempty(obj.meas_init)
-                init_supp =  obj.meas_init.supp;
+            if ~isempty(obj.init)
+                init_supp =  obj.init.supp();
             else
                 init_supp =  [];
             end
@@ -226,10 +228,10 @@ classdef location < handle
             if isempty(objective)
                 obj_max = 0;
             elseif length(objective) == 1    
-                obj_subs = obj.meas_term.var_sub_end(obj.vars, objective);
-                obj_max = mom(obj_subs);                            
+                obj_subs = obj.term.var_sub_mom(obj.vars, objective);
+                obj_max = (obj_subs);                            
             else
-                obj_subs = obj.meas_term.var_sub_end(obj.vars, objective);
+                obj_subs = obj.term.var_sub_mom(obj.vars, objective);
                 q_name = ['q_', num2str(obj.id)];
                 mpol(q_name, 1, 1);
                 q = eval(q_name);
@@ -243,17 +245,17 @@ classdef location < handle
         end
         
         function mass = mass_init(obj)
-            mass = obj.meas_init.mass();
+            mass = obj.init.mass();
         end
         
         %% Recovery
         function s_out = mmat_corner(obj)
             s_out  = struct('init', [], 'term', [], 'occ', []);
-            if ~isempty(obj.meas_init)
-                s_out.init = obj.meas_init.mmat_corner();
+            if ~isempty(obj.init)
+                s_out.init = obj.init.mmat_corner();
             end
-            if ~isempty(obj.meas_term)
-                s_out.term = obj.meas_term.mmat_corner();
+            if ~isempty(obj.term)
+                s_out.term = obj.term.mmat_corner();
             end
 %             s_out.occ  = obj.meas_occ.mmat_corner();
         end
@@ -266,19 +268,19 @@ classdef location < handle
                 tol = 5e-4;
             end
                         
-            if isempty(obj.meas_init)
+            if isempty(obj.init)
                 opt_init = 1;
                 mom_init.t = []; mom_init.x = [];
                 corner_init = 0;
             else
-                [opt_init, mom_init, corner_init] = obj.meas_init.recover(tol);
+                [opt_init, mom_init, corner_init] = obj.init.recover(tol);
             end
-            if isempty(obj.meas_term)
+            if isempty(obj.term)
                 opt_term = 1;
                 mom_term.t = []; mom_term.x = [];
                 corner_term = 0;
             else
-                [opt_term, mom_term, corner_term] = obj.meas_term.recover(tol);
+                [opt_term, mom_term, corner_term] = obj.term.recover(tol);
             end
             
             optimal = opt_init && opt_term;
@@ -388,13 +390,13 @@ classdef location < handle
         function nn_out = nonneg(obj, t, x)
             %nonnegative functions at this location
             
-            if isempty(obj.meas_init)
+            if isempty(obj.init)
                 nn_init = 0;
             else
                 nn_init = obj.dual.gamma - obj.dual.v;
             end
             
-            if isempty(obj.meas_term)
+            if isempty(obj.term)
                 nn_term = 0;
             else
                 nn_term = obj.dual.v - obj.dual.beta'*obj.objective;
