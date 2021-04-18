@@ -38,11 +38,17 @@ objective = t; %maximum time?
 %% Solve problem
 PM = peak_manager(lsupp, f, objective);
 
-order = 1;
-d = 2*order;
-[obj_p, mom_con, supp_con, len_liou, len_abscont] = PM.peak_cons(d);
-sol = PM.peak_solve(obj_p, mom_con,supp_con, 1);
-
+% order = 1;
+Nd = 6;
+status_rec = zeros(Nd, 1);
+time_rec = zeros(Nd, 1);
+for order = 1:Nd
+    d = 2*order;
+    [obj_p, mom_con, supp_con, len_liou, len_abscont] = PM.peak_cons(d);
+    sol = PM.peak_solve(obj_p, mom_con,supp_con, 1);
+    status_rec(order) = sol.status;
+    time_rec(order) = sol.obj_rec;
+end
 
 %the minimizing hierarchy returns a rising sequence of lower bounds
 %If the path is truly feasible, then Tmin = inf.

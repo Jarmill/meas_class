@@ -20,7 +20,7 @@ classdef location < handle
         f;          %dynamics
         objective;
         
-        dual = struct('v', 0, 'Lv', 0, 'beta', 1, 'gamma', 0, 'solved', 0);         
+        dual = struct('v', 0, 'Lv', 0, 'zeta', [], 'beta', 1, 'gamma', 0, 'solved', 0);         
         %still need to deal with dynamics f
         %and cost p (with maximin)        
     end
@@ -292,7 +292,7 @@ classdef location < handle
         
         %% Dual variables
         
-        function obj = dual_process(obj, order, v, beta, gamma)
+        function obj = dual_process(obj, order, v, zeta, beta, gamma)
              %DUAL_PROCESS turn the dual variables from solution into 
              %polynomials and interpretable quantities
              
@@ -306,12 +306,20 @@ classdef location < handle
              
              %process the polynomials
              
-             monom = mmon(obj.get_vars(), 0, 2*order);
+             monom = mmon(obj.get_vars_end(), 0, 2*order);
              obj.dual.v = v'*monom;
              
              obj.dual.Lv = diff(obj.dual.v, obj.vars.x)*obj.f;
              if ~isempty(obj.vars.t)
                 obj.dual.Lv = diff(obj.dual.v, obj.vars.t) + obj.dual.Lv;
+             end
+             
+             %box polynomials
+             monom_all = mmon(obj.get_vars(), 0, 2*order);
+             obj.dual.zeta = [];
+             for i = 1:length(zeta)
+                 zeta_curr = zeta{i}'*monom_all;
+                 obj.dual.zeta = [obj.dual.zeta; zeta_curr];
              end
             
         end        
@@ -387,27 +395,43 @@ classdef location < handle
             end
         end
 
-        function nn_out = nonneg(obj, t, x)
+        function nn_out = nonneg(obj, t, x, th, w)
             %nonnegative functions at this location
             
+            %initial measure
             if isempty(obj.init)
                 nn_init = 0;
             else
                 nn_init = obj.dual.gamma - obj.dual.v;
             end
             
+            %terminal measure
             if isempty(obj.term)
                 nn_term = 0;
             else
                 nn_term = obj.dual.v - obj.dual.beta'*obj.objective;
             end
             
-            nn = [nn_init; -obj.dual.Lv; nn_term];
+            %occupation measure
+            nn_occ = -obj.dual.Lv;
+            if ~isempty(obj.dual.zeta)
+                %handle the boxes
+                nn_occ = nn_occ + sum(obj.dual.zeta);
+            end
+            
+            
+            %box occupation measure
+            
+            
+            %box complement
+            
+            
+            nn = [nn_init; nn_occ; nn_term];
             
             if obj.loc_supp.TIME_INDEP
-                nn_out = eval(nn, obj.get_vars(), x);                                   
+                nn_out = eval(nn, [obj.x; obj.th; obj.vars.w], [x; th; w]);                                   
             else
-                nn_out = eval(nn, obj.get_vars(),  [t; x]);                                   
+                nn_out = eval(nn, obj.get_vars(),  [t; x; th; w]);                                   
             end
         end
         

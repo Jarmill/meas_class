@@ -84,7 +84,7 @@ classdef peak_manager
             [sol.status,sol.obj_rec, ~,sol.dual_rec]= msol(P);        
         end        
         
-        function obj = dual_process(obj, order, dual_rec, gamma)
+        function obj = dual_process(obj, order, dual_rec, len_liou, len_abscont)
             %DUAL_PROCESS dispatch the dual variables from solution to
             %locations and measures, turn the variables into nonnegative
             %functions along trajectories
@@ -96,45 +96,46 @@ classdef peak_manager
             rec_eq = dual_rec{1};
             rec_ineq = dual_rec{2};
             
-            if nargin < 3
-                gamma = rec_eq(end);
-            end
+%             if nargin < 3
+%                 gamma = rec_eq(end);
+%             end
                         
             
             %TODO: correct the offsets for abscont and liouville
             %TODO: only one step through the for loop
             
-            liou_offset = 0;
-            cost_con_offset = 0;
-            for i = 1:length(obj.locations)
+%             liou_offset = 0;
+%             cost_con_offset = 0;
+                                    
+            %liouville
+            %time independent
+            v_coeff = rec_eq(1:len_liou);
+            
+            gamma = rec_eq(end);
+            
+            %box absolute continuity
+            eq_count = len_liou;
+            zeta_coeff = cell(length(len_abscont), 1);
+            for i = 1:length(len_abscont)
+                zeta_coeff{i} = rec_eq(eq_count + (1:len_abscont(i)));
+                eq_count = eq_count + len_abscont(i);
+            end
+            
+            
+            %maximin cost duals
+            n_obj = length(obj.loc.objective);
+            if n_obj > 1
+%                 cost_con_offset
+%                 beta_curr = rec_ineq((1:n_obj) + cost_con_offset);
+                beta_curr = rec_ineq(1:n_obj);
+%                 cost_con_offset = cost_con_offset + n_obj;
+            elseif isempty(obj.loc.objective)
+                beta_curr = [];
+            else
+                beta_curr = 1;
+            end
                 
-                loc_curr = obj.locations{i};
-                
-                %liouville
-                %time independent
-                if isempty(loc_curr.vars.t)
-                    nvar_curr = length(loc_curr.vars.x);
-                else
-                    nvar_curr = length(loc_curr.vars.x)+1;
-                end
-                liou_len_curr = nchoosek(nvar_curr + 2*order, 2*order);
-                
-                v_coeff = rec_eq((1:liou_len_curr) + liou_offset);
-                                
-                liou_offset = liou_offset + liou_len_curr;
-                
-                %maximin cost duals
-                n_obj = length(loc_curr.objective);
-                if n_obj > 1
-                    beta_curr = rec_ineq((1:n_obj) + cost_con_offset);
-                    cost_con_offset = cost_con_offset + n_obj;
-                elseif isempty(loc_curr.objective)
-                    beta_curr = [];
-                else
-                    beta_curr = 1;
-                end
-                
-                loc_curr.dual_process(order, v_coeff, beta_curr, gamma);
+            loc_curr.dual_process(order, v_coeff, zeta_coeff, beta_curr, gamma);
                 
             end                       
             
@@ -154,8 +155,8 @@ classdef peak_manager
             sol = obj.peak_solve(objective, mom_con,supp_con);
             
 %             gamma_ind =  length(mom_con) - length(obj.guards);
-            gamma = sol.dual_rec{1}(len_liou+1);
-%             obj.dual_process(order, sol.dual_rec, gamma);
+%             gamma = sol.dual_rec{1}(len_liou+1);
+            obj.dual_process(order, sol.dual_rec, len_liou, len_abscont);
             
             %TODO: dual process the abscont zeta functions 
         end       
