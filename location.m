@@ -20,13 +20,18 @@ classdef location < handle
         f;          %dynamics
         objective;
         
-        dual = struct('v', 0, 'Lv', 0, 'zeta', [], 'beta', 1, 'gamma', 0, 'solved', 0);         
+        %lengths of dual variable indices in constraints
+        len_dual = struct('v', [], 'zeta', [], 'beta', []);
+        
+        %TODO: lie derivative with boxes and in subsystems
+        dual = struct('v', 0, 'beta', 1, 'gamma', 0, 'solved', 0);         
         %still need to deal with dynamics f
         %and cost p (with maximin)        
     end
     
     properties(Access = private)
         TIME_INDEP = 0;
+        supp_X_;
     end
     
     methods
@@ -59,6 +64,8 @@ classdef location < handle
             else
                 obj.supp.X_sys = obj.supp.X_sys;            
             end
+            
+            supp_X_ = obj.supp.X;
                        
             if nargin < 4                  
                 %by default, no objective
@@ -117,6 +124,11 @@ classdef location < handle
             vars_out = [obj.vars.t; obj.vars.x; obj.vars.th; obj.vars.w];
         end
         
+        function vars_out = get_vars_box(obj)
+            %GET_VARS_BOX include box variables b
+            vars_out = [obj.vars.t; obj.vars.x; obj.vars.th; obj.vars.w; obj.vars.b];
+        end
+        
         %% measure definition
         function meas_new = meas_def_end(obj, suffix, supp_ref)           
             %declare a variable for each initial or terminal measure
@@ -150,6 +162,30 @@ classdef location < handle
         
         
         %% Constraints
+        
+        function [objective, cons_eq, cons_ineq] = all_cons(obj, d)
+            %ALL_CONS all constraints involving solely location
+            %does not include sum of mass of initial measures
+            %Output:
+            %   cons_eq: equality constraints
+            %   cons_ineq: inequality constraints (objective)
+            
+            %gather all constraints together
+            liou = obj.liou_con(d);
+            len_liou = length(liou);
+            [abscont, len_abscont] = obj.abscont_con(d);
+            
+            [objective, cons_ineq] = obj.objective_con();
+            
+            %package up the output
+            obj.len_dual.v = len_liou;
+            obj.len_dual.zeta = len_abscont;
+            obj.len_dual.beta = length(cons_ineq);
+            
+            %ensure this iss the correct sign
+            cons_eq = [-liou; abscont]==0;                        
+        end
+        
         function cons = liou_con(obj, d)
             %LIOU_CON generate liouville constraint within location
             %
@@ -218,9 +254,15 @@ classdef location < handle
                             sys_supp];
         end
         
-        function [obj_max, obj_con] = objective_con(obj, d, objective)
+        function [len_out] = len_eq_cons(obj)
+            %LEN_EQ_CONS Number of equality constraints strictly in this
+            %location 
+            len_out = obj.len_dual.v + sum(obj.len_dual.zeta);
+        end
+        
+        function [obj_max, obj_con] = objective_con(obj, objective)
             %OBJECTIVE_CON deal with the objective, which may be maximin
-            if nargin == 2
+            if nargin == 1
                 objective = obj.objective;
             end
                                     
@@ -292,65 +334,89 @@ classdef location < handle
         
         %% Dual variables
         
-        function obj = dual_process(obj, order, v, zeta, beta, gamma)
+        function obj = dual_process(obj, d, rec_eq, rec_ineq, gamma)
              %DUAL_PROCESS turn the dual variables from solution into 
              %polynomials and interpretable quantities
-             
+             %
+             %Input:
+             %  d:          2*order, order of auxiliary polynomials
+             %  rec_eq:     dual variables from equality constraints
+             %  rec_ineq:   dual variables from inequality constraints
+             %  gamma:      objective value (as a dual variable)
              %TODO: fix this so that boxes can be used
              
              %numeric quantities
              obj.dual.solved = 1;
              
-             obj.dual.beta = beta;
+             obj.dual.beta = rec_ineq;
              obj.dual.gamma = gamma;
              
              %process the polynomials
              
-             monom = mmon(obj.get_vars_end(), 0, 2*order);
-             obj.dual.v = v'*monom;
+             %auxiliary function v
+             v_coeff = rec_eq(1:obj.len_dual.v);
+             monom = mmon(obj.get_vars_end(), 0, d);
+             obj.dual.v = v_coeff'*monom;
              
-             obj.dual.Lv = diff(obj.dual.v, obj.vars.x)*obj.f;
-             if ~isempty(obj.vars.t)
-                obj.dual.Lv = diff(obj.dual.v, obj.vars.t) + obj.dual.Lv;
-             end
+             count_zeta = obj.len_dual.v;
              
-             %box polynomials
-             monom_all = mmon(obj.get_vars(), 0, 2*order);
-             obj.dual.zeta = [];
-             for i = 1:length(zeta)
-                 zeta_curr = zeta{i}'*monom_all;
-                 obj.dual.zeta = [obj.dual.zeta; zeta_curr];
+             %iterate through all subsystems
+             Nb = length(obj.vars.b);
+             monom_all = mmon(obj.get_vars(), 0, d);
+             
+             %TODO: confirm that all abscont relations have the same length
+             len_monom_all = length(monom_all);
+             for i = 1:length(obj.sys)       
+                 
+                 %untangle the box zeta functions
+                 zeta = [];
+                 for j = 1:Nb
+                     zeta_coeff = rec_eq(count_zeta + (1:len_monom_all));
+                     zeta_curr = zeta_coeff'*monom_all;
+                     zeta = [zeta; zeta_curr];   
+                     
+                     count_zeta = count_zeta + len_monom_all;
+                 end
+                 
+
+                 %ship off dual variables for processing in subsystem 
+                 obj.sys{i} = obj.sys{i}.dual_process(obj.dual.v, zeta);       
+                 
+                 
+                 %figure out nonnegativity requirement
              end
-            
         end        
         
-        %it may be worthwhile to set location_time_indep as its own class
-        function f_out = f_eval(obj, t, x)
-            %evaluate v
-            if obj.loc_supp.TIME_INDEP
-                f_out = eval(obj.f, obj.get_vars(), x);
-            else 
-                f_out = eval(obj.f, obj.get_vars(), [t; x]);
-            end
-        end
         
-        function v_out = v_eval(obj, t, x)
-            %evaluate v
-            if obj.loc_supp.TIME_INDEP
-                v_out = eval(obj.dual.v, obj.get_vars(), x);
-            else
-                v_out = eval(obj.dual.v, obj.get_vars(), [t; x]);
-            end
-        end
         
-        function Lv_out = Lv_eval(obj, t, x)
-            %evaluate Lv
-            if obj.loc_supp.TIME_INDEP
-                Lv_out = eval(obj.dual.Lv, obj.get_vars(), x);
-            else
-                Lv_out = eval(obj.dual.Lv, obj.get_vars(), [t; x]);
-            end
-        end
+        %% Sampling
+%         %it may be worthwhile to set location_time_indep as its own class
+%         function f_out = f_eval(obj, t, x)
+%             %evaluate v
+%             if obj.loc_supp.TIME_INDEP
+%                 f_out = eval(obj.f, obj.get_vars(), x);
+%             else 
+%                 f_out = eval(obj.f, obj.get_vars(), [t; x]);
+%             end
+%         end
+%         
+%         function v_out = v_eval(obj, t, x)
+%             %evaluate v
+%             if obj.loc_supp.TIME_INDEP
+%                 v_out = eval(obj.dual.v, obj.get_vars(), x);
+%             else
+%                 v_out = eval(obj.dual.v, obj.get_vars(), [t; x]);
+%             end
+%         end
+%         
+%         function Lv_out = Lv_eval(obj, t, x)
+%             %evaluate Lv
+%             if obj.loc_supp.TIME_INDEP
+%                 Lv_out = eval(obj.dual.Lv, obj.get_vars(), x);
+%             else
+%                 Lv_out = eval(obj.dual.Lv, obj.get_vars(), [t; x]);
+%             end
+%         end
         
         function obj_out = obj_eval(obj, t, x)
             %evaluate objective
@@ -366,7 +432,7 @@ classdef location < handle
 %             if obj.loc_supp.TIME_INDEP
 %                 supp_out =  all(eval(obj.supp.X, obj.get_vars(), [t; x]));
 %             else
-                supp_out =  all(eval(obj.supp.X, obj.vars.x, x));
+                supp_out =  all(eval(obj.supp_X_, obj.vars.x, x));
 %             end
         end
         
@@ -413,12 +479,16 @@ classdef location < handle
             end
             
             %occupation measure
-            nn_occ = -obj.dual.Lv;
-            if ~isempty(obj.dual.zeta)
-                %handle the boxes
-                nn_occ = nn_occ + sum(obj.dual.zeta);
-            end
+            %TODO: replace with subsystem call
             
+%             nn_occ = -obj.dual.Lv;
+%             if ~isempty(obj.dual.zeta)
+%                 %handle the boxes
+%                 nn_occ = nn_occ + sum(obj.dual.zeta);
+%             end
+%             
+
+        
             
             %box occupation measure
             
@@ -426,8 +496,10 @@ classdef location < handle
             %box complement
             
             
-            nn = [nn_init; nn_occ; nn_term];
+            nn = [nn_init; nn_term; nn_sys];
             
+            
+            % TODO: set to private nn for fast evaluation
             if obj.loc_supp.TIME_INDEP
                 nn_out = eval(nn, [obj.x; obj.th; obj.vars.w], [x; th; w]);                                   
             else
@@ -449,6 +521,9 @@ classdef location < handle
         end
         
         %% Sampler
+        
+        %TODO: completely rework this section. Use no-class sampler code as
+        %a model for continuous and discrete sampling
         function out_sim = sample_traj_loc(obj, t0, x0, Tmax, curr_event)
             %SAMPLE_TRAJ_LOC Sample a single trajectory starting at (t0, x0) in
             %this location. Stop when the the trajectory hits a guard or

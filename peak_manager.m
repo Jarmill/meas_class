@@ -23,7 +23,7 @@ classdef peak_manager
         
         %% Formulating and solving program
         
-        function [objective, mom_con, supp_con, len_liou, len_abscont] = peak_cons(obj,d, Tmax)
+        function [objective, mom_con, supp_con] = peak_cons(obj,d, Tmax)
             %PEAKCONS formulate support and measure constraints for peak
             %program at degree d
             %Input:
@@ -34,16 +34,13 @@ classdef peak_manager
             %   objective:  target to maximize  (@mom)
             %   mom_con:    moment constraints  (@momcon)
             %   supp_con:   support constraints (@supcon)
-            %   len_liou:   number of liouville constraints (uint32)
+          
 
-            supp_con = obj.loc.supp_con();       %support constraint     
-            mass_init_sum = 0;   %mass of initial measure should be 1
+            supp_con = obj.loc.supp_con();       %support constraint                 
                         
-            %get moment constraints
-            liou_con = -(obj.loc.liou_con(d));
-            [objective, obj_con] = obj.loc.objective_con(d);
-            [abscont_con, len_abscont] = obj.loc.abscont_con(d);
-
+            %gather all constraints in each location
+            %(loop over locations)
+            [objective, cons_eq, cons_ineq] = obj.loc.all_cons(d);
             %finalize moment constraints
             
             %mass of initial measure sums to one
@@ -53,10 +50,10 @@ classdef peak_manager
             %than Tmax. Implement/fix this?
             %TODO: get this done
                 
-            len_liou = length(liou_con);
-            
-            mom_con = [liou_con==0; abscont_con==0; obj_con; mass_init_con];  
+%             len_liou = length(liou_con);
 
+            mom_con = [cons_eq; cons_ineq; mass_init_con];
+            
 
         end                    
     
@@ -84,7 +81,7 @@ classdef peak_manager
             [sol.status,sol.obj_rec, ~,sol.dual_rec]= msol(P);        
         end        
         
-        function obj = dual_process(obj, order, dual_rec, len_liou, len_abscont)
+        function obj = dual_process(obj, d, dual_rec)
             %DUAL_PROCESS dispatch the dual variables from solution to
             %locations and measures, turn the variables into nonnegative
             %functions along trajectories
@@ -96,48 +93,55 @@ classdef peak_manager
             rec_eq = dual_rec{1};
             rec_ineq = dual_rec{2};
             
-%             if nargin < 3
-%                 gamma = rec_eq(end);
-%             end
-                        
-            
-            %TODO: correct the offsets for abscont and liouville
-            %TODO: only one step through the for loop
-            
-%             liou_offset = 0;
-%             cost_con_offset = 0;
-                                    
             %liouville
             %time independent
-            v_coeff = rec_eq(1:len_liou);
-            
+%             v_coeff = rec_eq(1:len_liou);
+                        
             gamma = rec_eq(end);
             
-            %box absolute continuity
-            eq_count = len_liou;
-            zeta_coeff = cell(length(len_abscont), 1);
-            for i = 1:length(len_abscont)
-                zeta_coeff{i} = rec_eq(eq_count + (1:len_abscont(i)));
-                eq_count = eq_count + len_abscont(i);
-            end
+            %counters for constraints (for multiple locations)
+            count_eq = 0;
+            count_ineq = 0;
+            
+            %index out current dual variable coefficients
+            len_eq_curr = obj.loc.len_eq_cons();
+            len_ineq_curr = length(obj.loc.len_dual.beta);
+            
+            rec_eq_curr = rec_eq(count_eq + (1:len_eq_curr));
+            rec_ineq_curr = rec_ineq(count_ineq + (1:len_ineq_curr));
+            
+            obj.loc = obj.loc.dual_process(d, rec_eq_curr, rec_ineq_curr, gamma);
+            
+            %prepare for next location (for future code)
+            count_eq = count_eq + len_eq_curr;
+            count_ineq = count_ineq + len_ineq_curr;
             
             
-            %maximin cost duals
-            n_obj = length(obj.loc.objective);
-            if n_obj > 1
-%                 cost_con_offset
-%                 beta_curr = rec_ineq((1:n_obj) + cost_con_offset);
-                beta_curr = rec_ineq(1:n_obj);
-%                 cost_con_offset = cost_con_offset + n_obj;
-            elseif isempty(obj.loc.objective)
-                beta_curr = [];
-            else
-                beta_curr = 1;
-            end
+            
+            
+%             %box absolute continuity
+%             eq_count = len_liou;
+%             zeta_coeff = cell(length(len_abscont), 1);
+%             for i = 1:length(len_abscont)
+%                 zeta_coeff{i} = rec_eq(eq_count + (1:len_abscont(i)));
+%                 eq_count = eq_count + len_abscont(i);
+%             end                        
+%             %maximin cost duals
+%             n_obj = length(obj.loc.objective);
+%             if n_obj > 1
+% %                 cost_con_offset
+% %                 beta_curr = rec_ineq((1:n_obj) + cost_con_offset);
+%                 beta_curr = rec_ineq(1:n_obj);
+% %                 cost_con_offset = cost_con_offset + n_obj;
+%             elseif isempty(obj.loc.objective)
+%                 beta_curr = [];
+%             else
+%                 beta_curr = 1;
+%             end
                 
-            loc_curr.dual_process(order, v_coeff, zeta_coeff, beta_curr, gamma);
+%             loc_curr.dual_process(order, v_coeff, zeta_coeff, beta_curr, gamma);
                 
-            end                       
+%             end                       
             
         end
         
@@ -149,14 +153,14 @@ classdef peak_manager
             end
             
             d = 2*order;
-            [objective, mom_con, supp_con, len_liou, len_abscont] = obj.peak_cons(d, Tmax);
+            [objective, mom_con, supp_con] = obj.peak_cons(d, Tmax);
             
             
             sol = obj.peak_solve(objective, mom_con,supp_con);
             
 %             gamma_ind =  length(mom_con) - length(obj.guards);
 %             gamma = sol.dual_rec{1}(len_liou+1);
-            obj.dual_process(order, sol.dual_rec, len_liou, len_abscont);
+            obj = obj.dual_process(d, sol.dual_rec);
             
             %TODO: dual process the abscont zeta functions 
         end       

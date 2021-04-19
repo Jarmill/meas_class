@@ -18,7 +18,7 @@ X0 = ((x(1)-C0(1))^2 + (x(2)-C0(2))^2 <= R0^2);
 %% location support 
 
 lsupp = loc_support(vars);
-lsupp = lsupp.set_box(4);
+lsupp = lsupp.set_box([-1, 3; -1.5, 2]);
 lsupp.X_init = X0;
 lsupp.Tmax = 10;
 lsupp.disturb = w^2 <= 1;
@@ -33,6 +33,9 @@ PM = peak_manager(lsupp, f, objective);
 
 %generate constraints
 order = 4;
-d = 2*order;
-[obj_p, mom_con, supp_con, len_liou, len_abscont] = PM.peak_cons(d);
-sol = PM.peak_solve(obj_p, mom_con,supp_con);
+sol = PM.peak(order, lsupp.Tmax);
+
+% d = 2*order;
+% [obj_p, mom_con, supp_con] = PM.peak_cons(d);
+% sol = PM.peak_solve(obj_p, mom_con,supp_con);
+% PM = PM.dual_process(d, sol.dual_rec);

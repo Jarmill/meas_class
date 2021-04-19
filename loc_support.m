@@ -194,7 +194,7 @@ classdef loc_support
         end
         
         function X_sys = get_X_sys_ind(obj, ind)
-            if isempty(obj.X_sys)
+            if isempty(obj.X_sys) || isempty(obj.X_sys{ind})
                 X_sys = obj.X;
             else
                 if iscell(obj.X_sys)

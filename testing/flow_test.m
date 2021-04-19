@@ -26,10 +26,18 @@ lsupp.Tmax = 10;
 f = [x(2); -x(1) + (1/3).* x(1).^3 - x(2)];
 objective = -x(2);
 
+SOLVE = 1;
+REC = 1;
+% if SOLVE
 PM = peak_manager(lsupp, f, objective);
 
 %generate constraints
 order = 3;
 d = 2*order;
-[obj_p, mom_con, supp_con, len_liou, len_abscont] = PM.peak_cons(d);
-sol = PM.peak_solve(obj_p, mom_con,supp_con);
+sol = PM.peak(order, 10);
+% [obj_p, mom_con, supp_con] = PM.peak_cons(d);
+% sol = PM.peak_solve(obj_p, mom_con,supp_con);
+% end
+% if REC
+%     PM = PM.dual_process(d, sol.dual_rec);
+% end
