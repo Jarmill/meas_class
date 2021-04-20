@@ -20,11 +20,14 @@ classdef location < handle
         f;          %dynamics
         objective;
         
+        %bound by loc_sampler constructor
+        sampler = [];
+        
         %lengths of dual variable indices in constraints
         len_dual = struct('v', [], 'zeta', [], 'beta', []);
         
         %TODO: lie derivative with boxes and in subsystems
-        dual = struct('v', 0, 'beta', 1, 'gamma', 0, 'solved', 0);         
+        dual = struct('v', 0, 'beta', 1, 'gamma', 0, 'nn', 0, 'solved', 0);         
         %still need to deal with dynamics f
         %and cost p (with maximin)        
     end
@@ -32,6 +35,7 @@ classdef location < handle
     properties(Access = private)
         TIME_INDEP = 0;
         supp_X_;
+        nn_;
     end
     
     methods
@@ -40,13 +44,9 @@ classdef location < handle
             %   Detailed explanation goes here
             
             %fill in properties
+            
+            %TODO: make id the last argument
             obj.id = id;
-%             obj.vars = vars;
-%             if ~isfield(vars, 't') || isempty(vars.t)
-%                 obj.vars.t = []; %time-independent
-%                 obj.loc_supp.TIME_INDEP = 1;            
-%             end
-
             
             obj.supp = loc_supp;
             obj.vars = loc_supp.vars;
@@ -65,7 +65,7 @@ classdef location < handle
                 obj.supp.X_sys = obj.supp.X_sys;            
             end
             
-            supp_X_ = obj.supp.X;
+            obj.supp_X_ = obj.supp.X;
                        
             if nargin < 4                  
                 %by default, no objective
@@ -146,12 +146,10 @@ classdef location < handle
                     %load the new variable into vars_new
                     vars_new.(curr_name) = eval(new_name);
                 end
-%                 obj.vars.(curr_var) = vars.(curr_var);
             end
             
            
                 %create new support as well
-%                 supp_ref = obj.supp.supp_sys_pack(obj.supp.X_sys);
                 supp_new = subs_vars(supp_ref, [obj.vars.t; obj.vars.x; obj.vars.th], ...
                                 [vars_new.t; vars_new.x; vars_new.th]);
            
@@ -385,6 +383,23 @@ classdef location < handle
                  
                  %figure out nonnegativity requirement
              end
+            
+             %nonnegativity of location (not subsystems)
+            %initial measure
+            if isempty(obj.init)
+                nn_init = 0;
+            else
+                nn_init = obj.dual.gamma - obj.dual.v;
+            end
+            
+            %terminal measure
+            if isempty(obj.term)
+                nn_term = 0;
+            else
+                nn_term = obj.dual.v - obj.dual.beta'*obj.objective;
+            end
+            obj.dual.nn = [nn_init; nn_term];
+             
         end        
         
         
@@ -420,10 +435,10 @@ classdef location < handle
         
         function obj_out = obj_eval(obj, t, x)
             %evaluate objective
-            if obj.loc_supp.TIME_INDEP
-                obj_out = eval(obj.objective, obj.get_vars(), x);
+            if obj.supp.TIME_INDEP
+                obj_out = eval(obj.objective, obj.vars.x, x);
             else
-                obj_out = eval(obj.objective, obj.get_vars(), [t; x]);
+                obj_out = eval(obj.objective, [obj.vars.t; obj.vars.x], [t; x]);
             end
         end
         
@@ -461,51 +476,51 @@ classdef location < handle
             end
         end
 
-        function nn_out = nonneg(obj, t, x, th, w)
-            %nonnegative functions at this location
-            
-            %initial measure
-            if isempty(obj.init)
-                nn_init = 0;
-            else
-                nn_init = obj.dual.gamma - obj.dual.v;
-            end
-            
-            %terminal measure
-            if isempty(obj.term)
-                nn_term = 0;
-            else
-                nn_term = obj.dual.v - obj.dual.beta'*obj.objective;
-            end
-            
-            %occupation measure
-            %TODO: replace with subsystem call
-            
-%             nn_occ = -obj.dual.Lv;
-%             if ~isempty(obj.dual.zeta)
-%                 %handle the boxes
-%                 nn_occ = nn_occ + sum(obj.dual.zeta);
+%         function nn_out = nonneg(obj, t, x, th, w)
+%             %nonnegative functions at this location
+%             
+%             %initial measure
+%             if isempty(obj.init)
+%                 nn_init = 0;
+%             else
+%                 nn_init = obj.dual.gamma - obj.dual.v;
 %             end
 %             
-
-        
-            
-            %box occupation measure
-            
-            
-            %box complement
-            
-            
-            nn = [nn_init; nn_term; nn_sys];
-            
-            
-            % TODO: set to private nn for fast evaluation
-            if obj.loc_supp.TIME_INDEP
-                nn_out = eval(nn, [obj.x; obj.th; obj.vars.w], [x; th; w]);                                   
-            else
-                nn_out = eval(nn, obj.get_vars(),  [t; x; th; w]);                                   
-            end
-        end
+%             %terminal measure
+%             if isempty(obj.term)
+%                 nn_term = 0;
+%             else
+%                 nn_term = obj.dual.v - obj.dual.beta'*obj.objective;
+%             end
+%             
+%             %occupation measure
+%             %TODO: replace with subsystem call
+%             
+% %             nn_occ = -obj.dual.Lv;
+% %             if ~isempty(obj.dual.zeta)
+% %                 %handle the boxes
+% %                 nn_occ = nn_occ + sum(obj.dual.zeta);
+% %             end
+% %             
+% 
+%         
+%             
+%             %box occupation measure
+%             
+%             
+%             %box complement
+%             
+%             
+%             nn = [nn_init; nn_term];
+%             
+%             
+%             % TODO: set to private nn for fast evaluation
+%             if obj.loc_supp.TIME_INDEP
+%                 nn_out = eval(nn, [obj.x; obj.th; obj.vars.w], [x; th; w]);                                   
+%             else
+%                 nn_out = eval(nn, obj.get_vars(),  [t; x; th; w]);                                   
+%             end
+%         end
         
         
         %something about processing dual_rec to get nonnegative functions

@@ -248,7 +248,7 @@ classdef subsystem
             
             %process the box dual variables           
             if isempty(zeta)
-                obj.nn = -obj.dual.Lv;
+                obj.dual.nn = -obj.dual.Lv;
             else
                 Nb = length(obj.vars.b);
                 %store all derivatives of v with respect to box occupation                
@@ -280,16 +280,42 @@ classdef subsystem
         %nonnegativity evaluation: include supports        
         
         %A function to evaluate dynamics f_
+        function f_out = f_eval(obj, data)
+            %data: [t, x, th, w, b] as required            
+            f_out = eval(obj.f_, obj.get_vars_box(), data);
+        end
         
         %A function to evaluate x in the support set supp_sys_
+        function supp_out = supp_eval(obj, t, x)
+            %is (t, x) in the support of the location?
+                supp_out =  all(eval(obj.supp_sys_, obj.vars.x, x));
+%             end
+        end
         
         %An event function to detect when trajectories leave the set for
         %ODE solving
+        function [event_eval, terminal, direction] = supp_event(obj, t, x)
+            %event function for @ode15 or other solver
+            Npt = size(x, 2);
+            event_eval = zeros(1, Npt);
+            for i = 1:Npt
+                xcurr = x(:, i);
+                tcurr = t(:, i);               
+
+                event_eval(i) = obj.supp_eval(tcurr, xcurr);
+            end
+            
+            %stop integrating when the system falls outside support
+            
+            terminal = 1;
+            direction = 0;                        
+        end
         
         %A function to evaluate nonnegative functions 
-        
-        %A function to evaluate nonnegative functions in the support set
-        
+        function nn_out = nonneg_eval(obj, data)
+            %data: [t, x, th, w] as required  
+            nn_out = eval(obj.nn_, obj.get_vars(), data);
+        end                                  
         
     end
 end
