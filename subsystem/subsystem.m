@@ -101,6 +101,11 @@ classdef subsystem < subsystem_interface
         
         %% Getters
         
+        function vars_out = get_vars(obj)
+            %GET_VARS_BOX include box variables b
+            vars_out = [obj.vars.t; obj.vars.x; obj.vars.th; obj.vars.w];
+        end
+        
         function vars_out = get_vars_box(obj)
             %GET_VARS_BOX include box variables b
             vars_out = [obj.vars.t; obj.vars.x; obj.vars.th; obj.vars.w; obj.vars.b];
@@ -115,20 +120,21 @@ classdef subsystem < subsystem_interface
             
             if isempty(obj.vars.b)
                 %no box inputs, simple to perform
-                 Ay = obj.meas_occ.mom_lie(d, obj.vars, obj.f);
+                 Ay = obj.meas_occ.mom_lie(d, obj.get_vars, obj.f);
             else
                 %non-trivial box inputs, more involved processing
                 
                 Nb = length(obj.vars.b);
                 %base occupation measure (with no box disturbance)
-                Ay = obj.meas_occ.mom_lie(d, obj.vars, obj.f_box(:, 1));
+%                 vars_
+                Ay = obj.meas_occ.mom_lie(d, obj.get_vars, obj.f_box(:, 1));
                 
                 %each input channel at a time
 %                 I = eye(Nb);
                 
                 for k = 1:Nb
 %                     fk = subs(obj.f, obj.vars.b, I(:, k)) - f0;
-                    Ay_curr = obj.meas_box{k}.mom_lie(d, obj.vars, obj.f_box(:, k+1), 0);
+                    Ay_curr = obj.meas_box{k}.mom_lie(d, obj.get_vars, obj.f_box(:, k+1), 0);
                     
                     %add contribution to lie derivative
                     Ay = Ay + Ay_curr;

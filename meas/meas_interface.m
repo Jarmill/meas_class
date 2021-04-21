@@ -60,14 +60,14 @@ classdef meas_interface < handle
             end
         end    
             
-        function f_new = var_sub(obj, vars_old, f_old)
+        function f_new = var_sub(obj, old_stack, f_old)
             %substitute variables of measures in for f_old   
-                varnames = fields(vars_old);
-                old_stack = [];
-                for i = 1:length(varnames)
-                    curr_var = varnames{i};
-                    old_stack = [old_stack; vars_old.(curr_var)];
-                end
+%                 varnames = fields(vars_old);
+%                 old_stack = [];
+%                 for i = 1:length(varnames)
+%                     curr_var = varnames{i};
+%                     old_stack = [old_stack; vars_old.(curr_var)];
+%                 end
             
                 f_new = subs_vars(f_old, old_stack, obj.get_vars);
         end

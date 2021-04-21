@@ -34,7 +34,7 @@ PM = peak_manager(lsupp, f, objective);
 %generate constraints
 order = 3;
 d = 2*order;
-sol = PM.peak(order, 10);
+sol = PM.run(order, 10);
 % [obj_p, mom_con, supp_con] = PM.peak_cons(d);
 % sol = PM.peak_solve(obj_p, mom_con,supp_con);
 % end

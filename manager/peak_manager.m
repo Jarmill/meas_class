@@ -1,12 +1,9 @@
-classdef peak_manager
-    %PEAK_MANAGER standard peak estimation manager    
+classdef peak_manager < manager_interface
+    %PEAK_MANAGER manager for peak estimation with possible uncertainty  
+    %includes maximin penalties
     %only a single location 'loc'
     %   may reverse this
-    
-    properties
-        loc;        
-        solver = 'mosek';
-    end
+        
     
     methods
         function obj = peak_manager(loc_supp, f, objective)
@@ -16,15 +13,15 @@ classdef peak_manager
                 objective = 0;
             end
 
-            obj.loc = location(1, loc_supp, f, objective);
-            
-            obj.solver = 'mosek';
+            loc_curr = location(1, loc_supp, f, objective);
+                     
+            obj@manager_interface(loc_curr);
         end
         
         %% Formulating and solving program
         
-        function [objective, mom_con, supp_con] = peak_cons(obj,d, Tmax)
-            %PEAKCONS formulate support and measure constraints for peak
+        function [objective, mom_con, supp_con] = cons(obj,d, Tmax)
+            %PEAK_CONS formulate support and measure constraints for peak
             %program at degree d
             %Input:
             %   d:      Monomials involved in relaxation (2*order)
@@ -56,30 +53,7 @@ classdef peak_manager
             
 
         end                    
-    
-        function sol = peak_solve(obj, objective, mom_con,supp_con, minquery)
-            %PEAK_SOLVE formulate and solve peak estimation program from
-            %constraints and objective    
-            
-            %TODO: incorporate minquery into maximin (minimax) formulation
-
-            mset('yalmip',true);
-            %make sure the solution is precise
-            mset(sdpsettings('solver', obj.solver, 'mosek.MSK_DPAR_BASIS_TOL_S', 1e-8, ...
-                'mosek.MSK_DPAR_BASIS_TOL_X', 1e-8, 'mosek.MSK_DPAR_INTPNT_CO_TOL_MU_RED', 1e-9, ...
-                'mosek.MSK_DPAR_INTPNT_TOL_PATH', 1e-6));
-            % https://docs.mosek.com/9.2/pythonfusion/parameters.html
-            
-            
-            if nargin == 5
-                P = msdp(min(objective), mom_con, supp_con);
-            else
-                P = msdp(max(objective), mom_con, supp_con);
-            end
-
-            sol = struct;
-            [sol.status,sol.obj_rec, ~,sol.dual_rec]= msol(P);        
-        end        
+     
         
         function obj = dual_process(obj, d, dual_rec)
             %DUAL_PROCESS dispatch the dual variables from solution to
@@ -114,56 +88,9 @@ classdef peak_manager
             
             %prepare for next location (for future code)
             count_eq = count_eq + len_eq_curr;
-            count_ineq = count_ineq + len_ineq_curr;
-            
-            
-            
-            
-%             %box absolute continuity
-%             eq_count = len_liou;
-%             zeta_coeff = cell(length(len_abscont), 1);
-%             for i = 1:length(len_abscont)
-%                 zeta_coeff{i} = rec_eq(eq_count + (1:len_abscont(i)));
-%                 eq_count = eq_count + len_abscont(i);
-%             end                        
-%             %maximin cost duals
-%             n_obj = length(obj.loc.objective);
-%             if n_obj > 1
-% %                 cost_con_offset
-% %                 beta_curr = rec_ineq((1:n_obj) + cost_con_offset);
-%                 beta_curr = rec_ineq(1:n_obj);
-% %                 cost_con_offset = cost_con_offset + n_obj;
-%             elseif isempty(obj.loc.objective)
-%                 beta_curr = [];
-%             else
-%                 beta_curr = 1;
-%             end
-                
-%             loc_curr.dual_process(order, v_coeff, zeta_coeff, beta_curr, gamma);
-                
-%             end                       
-            
+            count_ineq = count_ineq + len_ineq_curr;                                             
         end
-        
-        function sol = peak(obj, order, Tmax)
-            %the main call, the full peak program at the target order
-            
-            if nargin < 3
-                Tmax = 1;
-            end
-            
-            d = 2*order;
-            [objective, mom_con, supp_con] = obj.peak_cons(d, Tmax);
-            
-            
-            sol = obj.peak_solve(objective, mom_con,supp_con);
-            
-%             gamma_ind =  length(mom_con) - length(obj.guards);
-%             gamma = sol.dual_rec{1}(len_liou+1);
-            obj = obj.dual_process(d, sol.dual_rec);
-            
-            %TODO: dual process the abscont zeta functions 
-        end       
+                    
         
         %% Sampler       
         

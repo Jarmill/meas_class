@@ -1,12 +1,11 @@
-classdef peak_manager_hy < handle
+classdef peak_manager_hy < manager_interface
     %PEAK_MANAGER_HY Hybrid peak estimation manager
     %   Detailed explanation goes here
     
-    properties
-        locations;
-        guards;
-                
-        solver;                
+    %TODO: rework this with subsystems and samplers
+    
+    properties        
+        guards;                        
     end
     
     methods
@@ -16,10 +15,10 @@ classdef peak_manager_hy < handle
 %             obj.Property1 = inputArg1 + inputArg2;
 
             if ~iscell(locations_in)
-                obj.locations = {locations_in};
-            else
-                obj.locations = locations_in;
+                locations_in = {locations_in};
             end
+            
+            obj@manager_interface(locations_in);
             
             if ~iscell(guards_in)
                 obj.guards = {guards_in};                        
@@ -32,8 +31,8 @@ classdef peak_manager_hy < handle
         
         %% Formulating and solving program
         
-        function [objective, mom_con, supp_con, len_liou] = peak_cons(obj,d, Tmax)
-            %PEAKCONS formulate support and measure constraints for peak
+        function [objective, mom_con, supp_con, len_liou] = cons(obj,d, Tmax)
+            %CONS formulate support and measure constraints for peak
             %program at degree d
             %Input:
             %   d:      Monomials involved in relaxation (2*order)
@@ -49,13 +48,13 @@ classdef peak_manager_hy < handle
             mass_init_sum = 0;   %mass of initial measure should be 1
             objective = 0;                                   
             
-            liou_con = cell(length(obj.locations), 1);
-            obj_con = cell(length(obj.locations), 1);
+            liou_con = cell(length(obj.loc), 1);
+            obj_con = cell(length(obj.loc), 1);
             
             mass_occ_sum = 0;
             %process the location measures
-            for i = 1:length(obj.locations)
-                loc_curr = obj.locations{i};
+            for i = 1:length(obj.loc)
+                loc_curr = obj.loc{i};
                 
                 %accumulate support constraints
                 supp_con = [supp_con; loc_curr.supp_con()];
@@ -144,33 +143,18 @@ classdef peak_manager_hy < handle
 
         end                    
     
-        function [sol, dual_rec] = peak_solve(obj, objective, mom_con,supp_con)
-            %PEAK_SOLVE formulate and solve peak estimation program from
-            %constraints and objective    
-
-            mset('yalmip',true);
-            %make sure the solution is precise
-            mset(sdpsettings('solver', obj.solver, 'mosek.MSK_DPAR_BASIS_TOL_S', 1e-8, ...
-                'mosek.MSK_DPAR_BASIS_TOL_X', 1e-8, 'mosek.MSK_DPAR_INTPNT_CO_TOL_MU_RED', 1e-9, ...
-                'mosek.MSK_DPAR_INTPNT_TOL_PATH', 1e-6));
-            % https://docs.mosek.com/9.2/pythonfusion/parameters.html
-            P = msdp(max(objective), mom_con, supp_con);
-
-            sol = struct;
-            [sol.status,sol.obj_rec, ~,sol.dual_rec]= msol(P);        
-        end
         
         function s_out = mmat_corner(obj)
             %get the top corner of the moment matrix for all measures
-%             s_out = struct('locations',  cell(length(obj.locations), 1), ...
-%                            'guards', cell(length(obj.locations), 1));
+%             s_out = struct('locations',  cell(length(obj.loc), 1), ...
+%                            'guards', cell(length(obj.loc), 1));
                        
             s_out = {};
-            s_out.locations = cell(length(obj.locations), 1);
+            s_out.locations = cell(length(obj.loc), 1);
             s_out.guards = cell(length(obj.guards), 1);
             
-            for i = 1:length(obj.locations)
-                s_out.locations{i} = obj.locations{i}.mmat_corner();
+            for i = 1:length(obj.loc)
+                s_out.locations{i} = obj.loc{i}.mmat_corner();
             end
             
             for i = 1:length(obj.guards)
@@ -198,9 +182,9 @@ classdef peak_manager_hy < handle
             
             liou_offset = 0;
             cost_con_offset = 0;
-            for i = 1:length(obj.locations)
+            for i = 1:length(obj.loc)
                 
-                loc_curr = obj.locations{i};
+                loc_curr = obj.loc{i};
                 
                 %liouville
                 %time independent
@@ -228,43 +212,15 @@ classdef peak_manager_hy < handle
                 
                 loc_curr.dual_process(order, v_coeff, beta_curr, gamma);
                 
-            end
-            
-            %TODO: dual variable for Tmax
-%             if isempty(obj.locations{1}.vars.t)
-%                 %time independent hack
-%                 alpha = rec_ineq(cost_con_offset + i);
-%                 cost_con_offset = cost_con_offset + 1;
-%                 
-%                 %store the dual variable alpha somewhere
-%             end
+            end            
             
             for i = 1:length(obj.guards)
 %                 obj.guards{i}.zeno_dual = rec_ineq(cost_con_offset + i);
                 obj.guards{i}.dual_process(rec_ineq(cost_con_offset + i));
-            end
-            
-            
+            end                        
         end
         
-        function sol = peak(obj, order, Tmax)
-            %the main call, the full peak program at the target order
-            
-            if nargin < 3
-                Tmax = 1;
-            end
-            
-            d = 2*order;
-            [objective, mom_con, supp_con, len_liou] = obj.peak_cons(d, Tmax);
-            
-            
-            sol = obj.peak_solve(objective, mom_con,supp_con);
-            
-%             gamma_ind =  length(mom_con) - length(obj.guards);
-            gamma = sol.dual_rec{1}(len_liou+1);
-            obj.dual_process(order, sol.dual_rec, gamma);
-            
-        end
+
         
         %% Recovery
         
@@ -276,11 +232,11 @@ classdef peak_manager_hy < handle
                 tol = 5e-4;
             end
             
-            optimal = zeros(length(obj.locations), 1);
-            mom_out = cell(length(obj.locations), 1);
-            corner = cell(length(obj.locations), 1);
-            for i = 1:length(obj.locations)
-                [optimal(i), mom_out{i}, corner{i}] = obj.locations{i}.recover(tol);                 
+            optimal = zeros(length(obj.loc), 1);
+            mom_out = cell(length(obj.loc), 1);
+            corner = cell(length(obj.loc), 1);
+            for i = 1:length(obj.loc)
+                [optimal(i), mom_out{i}, corner{i}] = obj.loc{i}.recover(tol);                 
             end            
         end
         
@@ -290,11 +246,11 @@ classdef peak_manager_hy < handle
             %find the support evaluation of locations and guards at index
             
             
-            N_loc = length(obj.locations);
+            N_loc = length(obj.loc);
             supp_loc = zeros(N_loc, 1);
-%             supp_loc(1) = obj.locations{id}.supp_eval(t, x);
+%             supp_loc(1) = obj.loc{id}.supp_eval(t, x);
             for j = 1:N_loc
-                supp_loc(j) = obj.locations{j}.supp_eval(t, x);
+                supp_loc(j) = obj.loc{j}.supp_eval(t, x);
             end
         end
         
@@ -307,7 +263,7 @@ classdef peak_manager_hy < handle
             
             supp_g = zeros(N_guards, 1);
             possible_g = [];
-            supp_loc(1) = obj.locations{id}.supp_eval(t, x);
+            supp_loc(1) = obj.loc{id}.supp_eval(t, x);
             for j = 1:N_guards
                 supp_g(j) = obj.guards{g_mask(j)}.supp_eval(t, x);
                 if supp_g(j)
@@ -330,7 +286,7 @@ classdef peak_manager_hy < handle
                 %region
 %                 [supp_loc, supp_g] = supp_g_eval(obj, tcurr, xcurr, id);
 %                 event_eval(i) = supp_loc && all(~supp_g);
-                event_eval = obj.locations{id}.supp_eval(t, x);
+                event_eval = obj.loc{id}.supp_eval(t, x);
             end
                         
             %stop integrating when the system falls outside support
@@ -360,7 +316,7 @@ classdef peak_manager_hy < handle
             zeno_count = zeros(length(obj.guards), 1);
             while (t_curr < Tmax)
                 %sample within location
-                loc_curr = obj.locations{id_curr};
+                loc_curr = obj.loc{id_curr};
                 event_curr = @(t, x) obj.loc_event(t, x, id_curr); 
                 out_sim_curr = loc_curr.sample_traj_loc(t_curr, x_curr, Tmax, event_curr);
                 
@@ -468,7 +424,7 @@ classdef peak_manager_hy < handle
             %now `deal' the samples into locations and fields            
             %matlab hackery to make cells of empty cells
             out_sim_deal = struct;
-            out_sim_deal.locations = cellfun(@num2cell, cell(length(obj.locations), 1), 'UniformOutput', false);
+            out_sim_deal.locations = cellfun(@num2cell, cell(length(obj.loc), 1), 'UniformOutput', false);
             out_sim_deal.guards = cellfun(@num2cell, cell(length(obj.guards), 1), 'UniformOutput', false);
             
             
@@ -500,7 +456,7 @@ classdef peak_manager_hy < handle
             FS_axis = 12;
             
             Ng = length(obj.guards);
-            Nl = length(obj.locations);
+            Nl = length(obj.loc);
             
             figure(20)
             clf
@@ -528,7 +484,7 @@ classdef peak_manager_hy < handle
             FS_axis = 12;
             
             Ng = length(obj.guards);
-            Nl = length(obj.locations);
+            Nl = length(obj.loc);
             %% Locations
             %setup
             nonneg_title = {'Initial Value', 'Decrease in Value', 'Cost Proxy'};
