@@ -1,26 +1,13 @@
 classdef meas_uncertain < meas_interface
     %MEAS_UNCERTAIN A generic measure with uncertainty
     %   (time, state, time-independent uncertainty, time-dependent uncertainty)
-    
-    properties
-       
-        %variables
-%         vars = struct('t', [], 'x', [], 'th', [], 'w', []);
-        
-        %measure of variables
-%         meas = [];
-        
-        %support of measures
-%         supp = [];
-                
-    end
-    
+              
     methods
         
         %% constructor
         function obj = meas_uncertain(vars, supp)
-            %MEAS_BASE Construct a measure
-            %include the variables and the support         
+            %MEAS_UNCERTAIN Construct a measure with variables possessing
+            %uncertainty
 
             obj@meas_interface(vars, supp);
             

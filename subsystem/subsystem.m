@@ -1,43 +1,25 @@
-classdef subsystem
+classdef subsystem < subsystem_interface
     %SUBSYSTEM A subsystem x'=f(t, x, th, w, b) of a possibly uncertain 
     %dynamical system in measure analysis    
     
     properties
-        vars = struct('t', [], 'x', [], 'th', [], 'w', [], 'b', []);
         
-        %measures
-        meas_occ = [];  %occupation measure
+        
+        %additional measures for box uncertainty
         meas_box = {};  %box occupation measures
         meas_comp = {}; %box-complement occupation measures                
         
-        f = [];         %dynamics
+        
         f_box = {};     %affine decomposition of dynamics 
-                        %{no input, input 1, input 2, ...}
-        
-        %variables and identification
-        loc_id = [];
-        sys_id = [];
-        prefix = '';                
-        
-        dual = struct('v', 0, 'Lv', 0, 'Lv_box', 0, 'zeta', 0, 'nn', 0);
-        
-        supp;       %support of measures
-        supp_sys;   %support of only x
-        DIGITAL = 0;
+                        %{no input, input 1, input 2, ...}                                                       
     end
-    
-    properties(Access = private)
-        %use private properties for numeric function evaluations
-        %object-oriented matlab is slow with public variables 
-        f_;
-        supp_sys_ = []; %support of state
-        nn_ = 0;        %nonnegative function
-    end
+
     
     methods
         %% Constructor
         function obj = subsystem(loc_supp, f, sys_id, loc_id)
-            %SUBSYSTEM Construct a subsystem, fill in information
+            %SUBSYSTEM Construct a continuous (possibly uncertain) 
+            %subsystem, fill in information
             
             %process input
             if nargin < 3
@@ -48,26 +30,12 @@ classdef subsystem
                 loc_id = [];
             end
             
-            %identification and names
-            obj.loc_id = loc_id;
-            obj.sys_id = sys_id;
-            obj.prefix = ['_', num2str(sys_id), '_'];
-            if ~isempty(loc_id)
-                obj.prefix = [num2str(loc_id), obj.prefix];
-            end
-            
-            %support            
+            %superclass constructor
+            obj@subsystem_interface(loc_supp, f, sys_id, loc_id);
 
-            obj.vars = loc_supp.vars;
-            obj.supp_sys= loc_supp.get_X_sys_ind(sys_id);
-            obj.supp_sys_ = obj.supp_sys;
-            obj.supp = loc_supp.supp_sys_pack(obj.supp_sys);           
-            %occupation measure definition
-            obj.f = f;
-            obj.f_ = f; 
             
-            obj.meas_occ  = obj.meas_def('occ');          
-            
+            obj.dual = struct('v', 0, 'Lv', 0, 'Lv_box', 0, 'zeta', 0, 'nn', 0);
+                       
             %box-occupation measures definition
             if ~isempty(obj.vars.b)
                 Nb = length(obj.vars.b);
@@ -133,31 +101,18 @@ classdef subsystem
         
         %% Getters
         
-        function vars_out = get_vars(obj)
-            %GET_VARS add more variables as necessary
-            vars_out = [obj.vars.t; obj.vars.x; obj.vars.th; obj.vars.w];
-        end
-        
         function vars_out = get_vars_box(obj)
             %GET_VARS_BOX include box variables b
             vars_out = [obj.vars.t; obj.vars.x; obj.vars.th; obj.vars.w; obj.vars.b];
         end
         
         %% Constraints        
-        function Ay = cons_liou(obj, d)
-            %contribution of subsystem towards liouville constraints
-            if obj.DIGITAL
-                Ay = obj.cons_push(d);
-            else
-                Ay = obj.cons_lie(d);
-            end
-        end
+        
        
-        function Ay = cons_lie(obj, d)
-            %lie derivative affine combination
-            %continuous systems only
+        function Ay = cons_liou(obj, d)
+            %CONS_LIOU Liouville Equation includes an affine combination of
+            %Lie derivatives (continuous systems only)
             
-%             Ay = 0;
             if isempty(obj.vars.b)
                 %no box inputs, simple to perform
                  Ay = obj.meas_occ.mom_lie(d, obj.vars, obj.f);
@@ -166,8 +121,6 @@ classdef subsystem
                 
                 Nb = length(obj.vars.b);
                 %base occupation measure (with no box disturbance)
-                %TODO: replace with f_box
-%                 f0 = subs(obj.f, obj.vars.b, zeros(Nb, 1));
                 Ay = obj.meas_occ.mom_lie(d, obj.vars, obj.f_box(:, 1));
                 
                 %each input channel at a time
@@ -200,15 +153,7 @@ classdef subsystem
                 Ay_curr = -mom_occ + mom_box + mom_comp;
                 Ay = [Ay; Ay_curr]; 
             end
-        end
-        
-        function Ay = cons_push(obj, d)
-            %pushforward comparision affine combination
-            %discrete systems only
-            
-            Ay = obj.meas_occ.mom_push(d, obj.vars, obj.f) - ...
-                              obj.meas_occ.mom_monom_proj(d);
-        end
+        end        
         
 
               
@@ -234,16 +179,11 @@ classdef subsystem
             %auxiliary function v            
             obj.dual.v = v;
             
-            if obj.DIGITAL
-                %Dual process when dynamics are digital (no box)
-                pushforward = eval(v, obj.vars.x, obj.f);
-                Lv = pushforward - v;
-            else
-                obj.dual.Lv = diff(v, obj.vars.x)*obj.f;
-                obj.dual.zeta = zeta;
-                if ~isempty(obj.vars.t)
-                    obj.dual.Lv = obj.dual.Lv + diff(v, obj.vars.t);
-                end
+
+            obj.dual.Lv = diff(v, obj.vars.x)*obj.f;
+            obj.dual.zeta = zeta;
+            if ~isempty(obj.vars.t)
+                obj.dual.Lv = obj.dual.Lv + diff(v, obj.vars.t);
             end
             
             %process the box dual variables           
@@ -271,9 +211,7 @@ classdef subsystem
             end          
             
             obj.nn_ = obj.dual.nn;
-        end
-        
-
+        end        
         
         %% Function Evaluation (for sampling)
         %TODO: Implement this
@@ -283,40 +221,8 @@ classdef subsystem
         function f_out = f_eval(obj, data)
             %data: [t, x, th, w, b] as required            
             f_out = eval(obj.f_, obj.get_vars_box(), data);
-        end
-        
-        %A function to evaluate x in the support set supp_sys_
-        function supp_out = supp_eval(obj, t, x)
-            %is (t, x) in the support of the location?
-                supp_out =  all(eval(obj.supp_sys_, obj.vars.x, x));
-%             end
-        end
-        
-        %An event function to detect when trajectories leave the set for
-        %ODE solving
-        function [event_eval, terminal, direction] = supp_event(obj, t, x)
-            %event function for @ode15 or other solver
-            Npt = size(x, 2);
-            event_eval = zeros(1, Npt);
-            for i = 1:Npt
-                xcurr = x(:, i);
-                tcurr = t(:, i);               
+        end        
 
-                event_eval(i) = obj.supp_eval(tcurr, xcurr);
-            end
-            
-            %stop integrating when the system falls outside support
-            
-            terminal = 1;
-            direction = 0;                        
-        end
-        
-        %A function to evaluate nonnegative functions 
-        function nn_out = nonneg_eval(obj, data)
-            %data: [t, x, th, w] as required  
-            nn_out = eval(obj.nn_, obj.get_vars(), data);
-        end                                  
-        
     end
 end
 
