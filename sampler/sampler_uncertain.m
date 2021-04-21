@@ -1,74 +1,25 @@
-classdef loc_sampler < handle
-    %LOC_SAMPLER Sample in a location
-    %   Detailed explanation goes here
+classdef sampler_uncertain < sampler_uncertain_interface
+    %SAMPLER_UNCERTAIN Sample in location with continuous-time uncertainty
     
-    properties
-        vars;
-        
-        %samplers (default, return empty array)
-        sampler = struct('x',  @() [], ...
-                        'th', @() [], ...
-                        'w',  @() []);
-        
-        loc;
-                    
-        %function handle
-        odefcn = @ode15s;
-        
+    
+    properties        
         %expected time to switch systems (continuous time)
         %exponential distribution with parameter mu
         mu = 1;
         
-        Tmax = 1;
-        
-        FINE = 1; %low tolerance in ode solver
     end
     
     methods
-        function obj = loc_sampler(loc,sampler)
+        function obj = sampler_uncertain(loc,sampler)
             %LOC_SAMPLER Construct an instance of this class
             %   Detailed explanation goes here
 
-            %bind this sampler to the location
-            obj.loc = loc;
-            loc.sampler = obj;
+%             obj@sampler_interface
+            obj@sampler_uncertain_interface(loc, sampler);
             
-%             obj.sampler = sampler;
-            %iterate over arguments in point sampler functions
-            sampler_names = fields(sampler);
-            for i = 1:length(sampler_names )
-                curr_smp = sampler_names{i};
-                obj.sampler.(curr_smp) = sampler.(curr_smp);
-            end
-            
+
         end
-        
-        function [out_sim_multi] = sample_traj_multi(obj, N, Tmax)
-            if nargin < 3
-                Tmax = obj.loc.Tmax;
-            end
-            
-            if isnumeric(obj.sampler.x)
-                %given sample points
-                N = size(obj.sampler.x, 2);
-                out_sim_multi = cell(N, 1);               
-                %parallel code requires splitting off separate objects
-                for i = 1:N                    
-                    x0  = obj.sampler.x();                    
-                    th0 = obj.sampler.th();
-                    out_sim_multi{i} = obj.sample_traj(0, x0, th0, Tmax);
-                end
-                
-            else
-                %random sample.               
-                out_sim_multi = cell(N, 1);
-                for i = 1:N                    
-                    x0  = obj.sampler.x();                    
-                    th0 = obj.sampler.th();
-                    out_sim_multi{i} = obj.sample_traj(0, x0, th0, Tmax);
-                end
-            end
-        end
+       
         
         function out_sim = sample_traj(obj,t0, x0, th0, Tmax)
             %SAMPLE_TRAJ Sample a single trajectory starting at (t0, x0) in
@@ -188,12 +139,7 @@ classdef loc_sampler < handle
             out_sim.x = x_accum;
             out_sim.th = th0;
             out_sim.w = w_accum;
-            out_sim.b = b_accum;
-          
-%             %evaluate nonnegative functions
-%             if obj.loc.dual.solved                
-%                 out_sim.nonneg = obj.nonneg_traj(time_accum, x_accum, th0, w_accum);
-%             end
+            out_sim.b = b_accum;          
             
             out_sim.objective = obj.loc.obj_eval(out_sim.t', out_sim.x')';
             out_sim.id = obj.loc.id;                                                                    

@@ -31,7 +31,7 @@ loc = location(1, lsupp, f, objective);
 
 smp = struct('x', @() circle_sample(1)'*R0 + C0);
 
-LS = loc_sampler(loc, smp);
+LS = sampler_uncertain(loc, smp);
 
 
 traj = LS.sample_traj(0, C0, [], 10);
