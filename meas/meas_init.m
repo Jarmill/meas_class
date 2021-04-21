@@ -1,4 +1,4 @@
-classdef meas_init
+classdef meas_init < handle
     %MEAS_INIT A container of initial measures
     %   realizes unions of initial measures for a multi-part X_init
     
@@ -28,10 +28,14 @@ classdef meas_init
             end
             
             %copy over variables 
-            obj.vars.t  = loc_supp.vars.t;
-            obj.vars.x  = loc_supp.vars.x;
-            obj.vars.th = loc_supp.vars.th;
-            
+%             obj.vars.t  = loc_supp.vars.t;
+%             obj.vars.x  = loc_supp.vars.x;
+%             obj.vars.th = loc_supp.vars.th;
+            varnames = fields(loc_supp.vars);
+            for i = 1:length(varnames)
+                curr_var = varnames{i};
+                obj.vars.(curr_var) = loc_supp.vars.(curr_var);
+            end
             
             %process initial region
             X0 = loc_supp.get_X_init();
@@ -143,7 +147,7 @@ classdef meas_init
            
             
             %define the measure
-            meas_new = meas_base(vars_new, supp_new);
+            meas_new = meas_uncertain(vars_new, supp_new);
         end
         
         function supp_out = supp(obj)

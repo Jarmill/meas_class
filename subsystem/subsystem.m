@@ -128,7 +128,7 @@ classdef subsystem
            
             
             %define the measure
-            meas_new = meas_base(vars_new, supp_new);
+            meas_new = meas_uncertain(vars_new, supp_new);
         end
         
         %% Getters
