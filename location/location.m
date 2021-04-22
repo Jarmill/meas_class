@@ -90,8 +90,12 @@ classdef location < handle
             
             obj.sys = cell(Nsys, 1);
             %subsystems
-            for i = 1:Nsys
-                obj.sys{i} = subsystem(obj.supp, obj.f{i}, i, id);
+            for i = 1:Nsys                
+                if obj.supp.DIGITAL
+                    obj.sys{i} = subsystem_digital(obj.supp, obj.f{i}, i, id);
+                else
+                    obj.sys{i} = subsystem(obj.supp, obj.f{i}, i, id);
+                end
             end
             
             
@@ -209,6 +213,16 @@ classdef location < handle
             end
             
             cons = Ay_init + Ay_term + Ay_occ;
+        end
+        
+        function mass_out = mass_occ(obj)
+            %return the sum of the masses of all occupation measures
+            %useful for constraining a time-independent free-time system to
+            %have finite time
+            mass_out = 0;
+            for i =1:length(obj.sys)
+                mass_out = mass_out + obj.sys{i}.mass_occ();
+            end
         end
         
         function [cons, len_abscont] = abscont_con(obj, d)

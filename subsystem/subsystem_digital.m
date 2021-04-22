@@ -45,13 +45,14 @@ classdef subsystem_digital < subsystem_interface
             end
             
            
-                %create new support as well
-                supp_ref = obj.supp.supp_sys_pack(obj.supp.X_sys);
-                supp_new = subs_vars(supp_ref, obj.supp.get_vars(), ...
-                                [vars_new.t; vars_new.x; vars_new.th; vars_new.w]);
-                       
+           
+            %create new support as well
+                
+            supp_new = subs_vars(obj.supp, obj.get_vars(), ...
+                            [vars_new.t; vars_new.x; vars_new.th; vars_new.w]);
+           
             %define the measure
-            meas_new = meas_base(vars_new, supp_new);
+            meas_new = meas_uncertain(vars_new, supp_new);
         end
         
         %% Constraints        
@@ -67,12 +68,12 @@ classdef subsystem_digital < subsystem_interface
         
         %% Dual Recovery  
         
-        function obj = dual_process(obj, v)
+        function obj = dual_process(obj, v, zeta)
             %DUAL_PROCESS store dual functions and compute nonnegative
             %functions for this digital subsystem
             pushforward = eval(v, obj.vars.x, obj.f);
             Lv = pushforward - v;
-            obj.nn = -Lv;
+            obj.nn_ = -Lv;
         end
         
         %% Evaluation and Sampling

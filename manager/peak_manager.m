@@ -42,6 +42,12 @@ classdef peak_manager < manager_interface
             
             %mass of initial measure sums to one
             mass_init_con = (obj.loc.mass_init() - 1 == 0);
+            
+            if obj.loc.supp.TIME_INDEP
+                mass_occ_con = (obj.loc.mass_occ() <= Tmax);
+            else
+                mass_occ_con = [];
+            end
 
             %time independent: mass of sum of occupation measures are less
             %than Tmax. Implement/fix this?
@@ -49,7 +55,7 @@ classdef peak_manager < manager_interface
                 
 %             len_liou = length(liou_con);
 
-            mom_con = [cons_eq; cons_ineq; mass_init_con];
+            mom_con = [cons_eq; cons_ineq; mass_init_con; mass_occ_con];
             
 
         end                    

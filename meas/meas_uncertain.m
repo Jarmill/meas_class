@@ -70,7 +70,7 @@ classdef meas_uncertain < meas_interface
         function mom_out = mom_push(obj, d, vars_old, f_old)
             %MOM_PUSH pushforward moments v(f(x)) - v(x)
             v = obj.monom_proj(d);
-            f_curr = obj.var_sub(vars_old, f_old);
+            f_curr = obj.var_sub([vars_old.t; vars_old.x; vars_old.th; vars_old.w], f_old);
             Rv = subs(v, [obj.vars.t; obj.vars.x; obj.vars.th], ...
                 [obj.vars.t; f_curr; obj.vars.th]);
             mom_out = mom(Rv);

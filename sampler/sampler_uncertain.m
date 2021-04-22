@@ -22,9 +22,9 @@ classdef sampler_uncertain < sampler_uncertain_interface
        
         
         function out_sim = sample_traj(obj,t0, x0, th0, Tmax)
-            %SAMPLE_TRAJ Sample a single trajectory starting at (t0, x0) in
-            %this location. Stop when the the trajectory hits a guard or
-            %strays outside the location's support region
+            %SAMPLE_TRAJ Sample a single trajectory starting at (t0, x0, th0) 
+            %in this location. Stop when the the trajectory hits strays 
+            %outside the location's support region
             %
             %curr_event handles the event detection for leaving the support
             %region, and guards if enabled.

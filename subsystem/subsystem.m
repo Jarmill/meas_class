@@ -88,12 +88,12 @@ classdef subsystem < subsystem_interface
 %                 obj.vars.(curr_var) = vars.(curr_var);
             end
             
-           
-                %create new support as well
-                
-                supp_new = subs_vars(obj.supp, obj.get_vars(), ...
-                                [vars_new.t; vars_new.x; vars_new.th; vars_new.w]);
-           
+
+            %create new support as well
+
+            supp_new = subs_vars(obj.supp, obj.get_vars(), ...
+                            [vars_new.t; vars_new.x; vars_new.th; vars_new.w]);
+
             
             %define the measure
             meas_new = meas_uncertain(vars_new, supp_new);

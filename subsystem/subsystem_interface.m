@@ -79,8 +79,17 @@ classdef subsystem_interface < handle
                 curr_var = varnames{i};
                 vars_out = [vars_out; obj.vars.(curr_var)];
             end
-        end                  
+        end       
+        
+        function mass_out = mass_occ(obj)
+            %mass of occupation measure (estimated total time)
+            mass_out = obj.meas_occ.mass();
+        end
 
+        
+        function abs_out = abscont(obj, d)
+            abs_out = [];
+        end
               
         %% Getters
         function supp_all = get_supp(obj)
