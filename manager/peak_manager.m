@@ -13,7 +13,7 @@ classdef peak_manager < manager_interface
                 objective = 0;
             end
 
-            loc_curr = location(1, loc_supp, f, objective);
+            loc_curr = location(loc_supp, f, objective);
                      
             obj@manager_interface(loc_curr);
         end
@@ -85,7 +85,7 @@ classdef peak_manager < manager_interface
             
             %index out current dual variable coefficients
             len_eq_curr = obj.loc.len_eq_cons();
-            len_ineq_curr = length(obj.loc.len_dual.beta);
+            len_ineq_curr = obj.loc.len_dual.beta;
             
             rec_eq_curr = rec_eq(count_eq + (1:len_eq_curr));
             rec_ineq_curr = rec_ineq(count_ineq + (1:len_ineq_curr));

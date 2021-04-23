@@ -1,5 +1,5 @@
 classdef location < handle
-    %LOCATION A location (space) of a hybrid system
+    %LOCATION A location (space) of a dynamical system
     %   includes descriptions of the space as well as measures
     
     properties
@@ -39,14 +39,17 @@ classdef location < handle
     end
     
     methods
-        function obj = location(id, loc_supp, f, objective)
+        function obj = location(loc_supp, f, objective, id)
             %Location Construct an instance of this class
             %   Detailed explanation goes here
             
             %fill in properties
             
             %TODO: make id the last argument
-            obj.id = id;
+            if nargin < 4
+                id = [];            
+            end
+            obj.id = id;    
             
             obj.supp = loc_supp;
             obj.vars = loc_supp.vars;
@@ -61,13 +64,13 @@ classdef location < handle
             
             if ~iscell(obj.supp.X_sys)
                 obj.supp.X_sys = {obj.supp.X_sys};
-            else
-                obj.supp.X_sys = obj.supp.X_sys;            
+%             else
+%                 obj.supp.X_sys = obj.supp.X_sys;            
             end
             
             obj.supp_X_ = obj.supp.X;
                        
-            if nargin < 4                  
+            if nargin < 3                  
                 %by default, no objective
                 obj.objective = [];
             else
@@ -97,10 +100,7 @@ classdef location < handle
                     obj.sys{i} = subsystem(obj.supp, obj.f{i}, i, id);
                 end
             end
-            
-            
-            %TODO: add facility for multiple initial/final regions (unions)
-            
+                                    
             %initial measures
             if ~isempty(obj.supp.X_init)
 %                 obj.init = obj.meas_def_end('0', obj.supp.supp_init());

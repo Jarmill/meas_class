@@ -186,7 +186,22 @@ classdef meas_term < handle
             for i = 1:obj.NT
                 mmmon_out = mmmon_out + obj.meas{i}.mom_monom(dmin, dmax);
             end            
-        end
+        end                
+        
+        function mmmon_out = mom_monom_x(obj, dmin, dmax)
+            %MMON monomials of variables of measure
+            %from degree dmin to dmax
+            if nargin == 2
+                dmax = dmin;
+                dmin = 0;
+            end
+                
+            mmmon_out = 0;
+            for i = 1:length(obj.meas)
+                mmon_out = mmon(obj.meas{i}.vars.x, dmin, dmax);
+                mmmon_out = mmmon_out + mom(mmon_out);
+            end            
+        end  
                    
         
         %% moment recovery

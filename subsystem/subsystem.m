@@ -53,7 +53,7 @@ classdef subsystem < subsystem_interface
                     %process the dynamics f in terms of box dynamics
                     %f_box: {no input, input 1, input 2, ...}
 %                     obj.f_box = cell(Nb+1, 1);
-                    obj.f_box = zeros(Nb+1, 1) * obj.vars.b(1);
+                    obj.f_box = zeros(length(obj.f), Nb+1) * obj.vars.b(1);
                     f0 = subs(obj.f, obj.vars.b, zeros(Nb, 1));                    
                     obj.f_box(:, 1) = f0;
                     
@@ -61,7 +61,7 @@ classdef subsystem < subsystem_interface
                     I = eye(Nb);
 
                     for k = 1:Nb
-                        obj.f_box(:, k+1) = subs(obj.f, obj.vars.b, I(:, k)) - obj.f_box(1);                        
+                        obj.f_box(:, k+1) = subs(obj.f, obj.vars.b, I(:, k)) - f0;                        
                     end
                 end                                                
                 

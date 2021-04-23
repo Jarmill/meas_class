@@ -19,7 +19,8 @@ classdef meas_uncertain < meas_interface
             
         end
         
-        %% monomials                
+        %% monomials    
+        
         function mmon_out = monom_proj(obj, dmin, dmax)
             %MMON monomials of variables of measure
             %from degree dmin to dmax
@@ -35,7 +36,8 @@ classdef meas_uncertain < meas_interface
                 %may disable this
                 mmon_out = zeros(size(mmon_out));
             end
-        end          
+        end      
+              
                
         function f_new = var_sub_end(obj, vars_old, f_old)
             %substitute variables of measures in for f_old            

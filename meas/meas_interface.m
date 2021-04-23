@@ -124,12 +124,12 @@ classdef meas_interface < handle
     
     %% Overloads by inheritence
     methods(Abstract)
-        
-        mom_lie(obj, d, vars_old, f_old, suppress_time)
-        %moments of lie derivative
-        
-        mom_push(obj, d, vars_old, f_old)
-        %pushforward moments v(f(x)) - v(x)
+%         
+%         mom_lie(obj, d, vars_old, f_old, suppress_time)
+%         %moments of lie derivative
+%         
+%         mom_push(obj, d, vars_old, f_old)
+%         %pushforward moments v(f(x)) - v(x)
                 
         recover(obj, tol)
         %if top corner of the moment matrix is rank-1, then

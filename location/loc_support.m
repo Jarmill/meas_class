@@ -44,7 +44,7 @@ classdef loc_support
     methods
         
         %% constructor
-        function obj = loc_support(vars, loc_ref, sys_id)
+        function obj = loc_support(vars, loc_ref)
             %LOC_SUPPORT Construct an instance of this class
             %INPUT: 
             %   vars:   variables to define support
@@ -63,7 +63,7 @@ classdef loc_support
                 obj.vars.(curr_var) = vars.(curr_var);
             end
             
-            if nargin > 1
+            if (nargin > 1) && ~isempty(loc_ref)
                 %substitue all attributes of reference with new variables
                 %a constructor with copying and substitution
                 
