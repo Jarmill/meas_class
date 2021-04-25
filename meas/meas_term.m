@@ -1,20 +1,6 @@
-classdef meas_term < handle
+classdef meas_term < meas_collection
     %MEAS_TERM A container of terminal measures
-    %   realizes unions of terminal measures for a multi-part X_term 
-    
-    properties
-       
-        %variables
-        vars = struct('t', [], 'x', [], 'th', []);
-        
-        %measure of variables
-        meas = [];
-        NT;
-        
-        %support of measures
-        XT = [];
-        THT = [];      
-    end
+    %   realizes unions of terminal measures for a multi-part X_term    
     
     methods
         
@@ -28,14 +14,9 @@ classdef meas_term < handle
             end
             
             %copy over variables 
-%             obj.vars.t  = loc_supp.vars.t;
-%             obj.vars.x  = loc_supp.vars.x;
-%             obj.vars.th = loc_supp.vars.th;
-            varnames = fields(loc_supp.vars);
-            for i = 1:length(varnames)
-                curr_var = varnames{i};
-                obj.vars.(curr_var) = loc_supp.vars.(curr_var);
-            end
+            varnames = {'t','x','th'};
+            obj@meas_collection(loc_supp, varnames); 
+            obj.meas_type = @meas_uncertain;
             
             %process initial region
             XT = loc_supp.get_X_term();
@@ -102,91 +83,9 @@ classdef meas_term < handle
                 end
 
                 supp_curr = [tsupp ; XT_cell{i}; THT_cell{i}];
-                obj.meas{i} = obj.meas_def(suffix, supp_curr);
-            end
-            
-            obj.NT = NT;
-            obj.XT = XT_cell;
-            obj.THT = THT_cell;                                 
-        end
-
-        
-        
-        
-        %monomials: gloptipoly cannot add together monomials from different
-        %measures
-                
-        
-        %% measures
-        function meas_new = meas_def(obj, suffix, supp_ref)           
-            %declare a variable for each measure (index ind in the union)
-            vars_new = struct('t', [], 'x', [], 'th', []);           
-            varnames = fields(vars_new);
-            for i = 1:length(varnames)
-                curr_name = varnames{i};
-                curr_var = obj.vars.(curr_name);
-                
-                if ~isempty(curr_var)
-                    %declare a new variable
-                    new_name = [curr_name, suffix];
-                    mpol(new_name, length(curr_var), 1);
-                    %load the new variable into vars_new
-                    vars_new.(curr_name) = eval(new_name);
-                end
-%                 obj.vars.(curr_var) = vars.(curr_var);
-            end
-            
-           
-                %create new support as well
-%                 supp_ref = ;
-                supp_new = subs_vars(supp_ref, [obj.vars.t; obj.vars.x; obj.vars.th], ...
-                                [vars_new.t; vars_new.x; vars_new.th]);
-           
-            
-            %define the measure
-            meas_new = meas_uncertain(vars_new, supp_new);
-        end
-        
-        %% support
-        function supp_out = supp(obj)
-            %get the support of all measures
-            supp_out = [];
-            for i = 1:obj.NT
-                supp_out = [supp_out; obj.meas{i}.supp];
-            end
-        end
-        
-        %% moments
-        
-        function mass_out = mass(obj)
-            %MASS returns the mass (moment of 1) of the measure           
-            mass_out = 0;
-            for i = 1:obj.NT
-                mass_out = mass_out + obj.meas{i}.mass();
-            end
-        end   
-        
-        function f_new = var_sub_mom(obj, vars_old, f_old)
-            %VAR_SUB_MOM returns the moment of f_old with respect to all
-            %measures in this terminal set union
-            f_new = 0;
-            for i = 1:obj.NT
-                f_new = f_new + mom(obj.meas{i}.var_sub_end(vars_old, f_old));
-            end
-        end   
-        
-        function mmmon_out = mom_monom(obj, dmin, dmax)
-            %MOM_MMON moments of monomials
-            if nargin < 3
-                dmax = dmin;
-                dmin = 0;
-            end
-            
-            mmmon_out = 0;
-            for i = 1:obj.NT
-                mmmon_out = mmmon_out + obj.meas{i}.mom_monom(dmin, dmax);
-            end            
-        end                
+                obj.meas{i} = obj.meas_def({'t', 'x', 'th'}, suffix, supp_curr);
+            end                               
+        end                                                          
         
         function mmmon_out = mom_monom_x(obj, dmin, dmax)
             %MMON monomials of variables of measure
@@ -204,8 +103,7 @@ classdef meas_term < handle
         end  
                    
         
-        %% moment recovery
-        
+        %% moment recovery        
         function d_out = mmat(obj)
             %return moment matrix evaluated at current solution
             d_out = cellfun(@(m) m.mmat(), obj.meas, 'UniformOutput', 'false');

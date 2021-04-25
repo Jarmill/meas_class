@@ -11,7 +11,7 @@ classdef meas_interface < handle
     
     methods
         function obj = meas_interface(vars,supp)
-            %MEAS_BASE Construct an instance of this class
+            %MEAS_INTERFACE Construct an instance of this class
             %   Detailed explanation goes here
 %             obj.Property1 = inputArg1 + inputArg2;
 
@@ -83,14 +83,14 @@ classdef meas_interface < handle
         end                         
         
         function mmmon_out = mom_monom(obj, dmin, dmax)
-            %MOM_MMON moments of monomials
+            %MOM_MONOM moments of monomials
             if nargin < 3
                 dmax = dmin;
                 dmin = 0;
             end
             
             mmmon_out = mom(obj.monom(dmin, dmax));
-        end
+        end       
         
         function e = isempty(obj)
             %is the support empty?

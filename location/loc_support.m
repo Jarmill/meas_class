@@ -94,14 +94,23 @@ classdef loc_support
                     end
                 end
                 
-                obj.disturb = subs_vars(loc_ref.disturb, loc_ref.vars.w, obj.vars.w);
+                if isfield(loc_ref.vars, 'w')
+                    obj.disturb = subs_vars(loc_ref.disturb, loc_ref.vars.w, obj.vars.w);
+                end
                 
-                obj.param = subs_vars(loc_ref.disturb, loc_ref.vars.th, obj.vars.th);
-                
+                if isfield(loc_ref.vars, 'th')
+                    obj.param = subs_vars(loc_ref.disturb, loc_ref.vars.th, obj.vars.th);
+                end
             end
         end
         
         %% get variables
+        
+        function vars_out = get_vars_end(obj)
+            vars_out = [obj.vars.t;
+                        obj.vars.x;
+                        obj.vars.th];
+        end
         
         function vars_out = get_vars(obj)
             vars_out = [obj.vars.t;
@@ -120,6 +129,10 @@ classdef loc_support
         end
         
         %% get initial set
+        
+        function X = get_X(obj)
+            X = obj.X;
+        end
         
         function t_supp = get_t_supp_init(obj)
             if obj.TIME_INDEP
