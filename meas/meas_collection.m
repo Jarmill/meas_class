@@ -23,7 +23,11 @@ classdef meas_collection < handle
 
             for i = 1:length(varnames)
                 curr_var = varnames{i};
-                obj.vars.(curr_var) = loc_supp.vars.(curr_var);
+                if isfield(loc_supp.vars, curr_var)
+                    obj.vars.(curr_var) = loc_supp.vars.(curr_var);
+                else
+                    obj.vars.(curr_var) = [];
+                end
             end
         end       
         

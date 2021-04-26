@@ -64,35 +64,6 @@ classdef location < location_interface
             vars_out = [obj.vars.t; obj.vars.x; obj.vars.th; obj.vars.w; obj.vars.b];
         end
         
-        %% measure definition
-%         function meas_new = meas_def_end(obj, suffix, supp_ref)           
-%             %declare a variable for each initial or terminal measure
-%             %does not include 'w' or 'b' (time-dependent inputs)
-%             vars_new = struct('t', [], 'x', [], 'th', []);           
-%             varnames = fields(vars_new);
-%             for i = 1:length(varnames)
-%                 curr_name = varnames{i};
-%                 curr_var = obj.vars.(curr_name);
-%                 
-%                 if ~isempty(curr_var)
-%                     %declare a new variable
-%                     new_name = [curr_name, suffix];
-%                     mpol(new_name, length(curr_var), 1);
-%                     %load the new variable into vars_new
-%                     vars_new.(curr_name) = eval(new_name);
-%                 end
-%             end
-%             
-%            
-%                 %create new support as well
-%                 supp_new = subs_vars(supp_ref, [obj.vars.t; obj.vars.x; obj.vars.th], ...
-%                                 [vars_new.t; vars_new.x; vars_new.th]);
-%            
-%             
-%             %define the measure
-%             meas_new = meas_base(vars_new, supp_new);
-%         end
-        
         
         %% Constraints
         
@@ -129,9 +100,12 @@ classdef location < location_interface
         
         function [obj_max, obj_con] = objective_con(obj, objective)
             %OBJECTIVE_CON deal with the objective, which may be maximin
-            
+                                    
             %TODO: This should maybe go in the manager
             %The current implementation is only for peak estimation
+            
+            %TODO: include support for putting objectives on initial and
+            %occupation measures as well as the terminal measure
             if nargin == 1
                 objective = obj.objective;
             end
