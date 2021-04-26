@@ -18,10 +18,10 @@ classdef meas_base < meas_interface
             
         end
               
-        %% measures
+        %% liouville moments 
         function mom_out = mom_lie(obj, d, vars_old, f_old, suppress_time)
             %lie moments
-            v = obj.monom_proj(d);
+            v = obj.monom(d);
             f_curr = obj.var_sub(vars_old, f_old);
             mom_out = mom(diff(v, obj.vars.x)*f_curr);
             

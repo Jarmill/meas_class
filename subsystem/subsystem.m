@@ -3,8 +3,7 @@ classdef subsystem < subsystem_interface
     %dynamical system in measure analysis    
     
     properties
-        
-        q = 1;
+                
         %additional measures for box uncertainty
         meas_box = {};  %box occupation measures
         meas_comp = {}; %box-complement occupation measures                

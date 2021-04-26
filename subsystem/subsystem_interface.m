@@ -85,7 +85,7 @@ classdef subsystem_interface < handle
             vars_out = [];
             for i = 1:length(varnames)
                 curr_var = varnames{i};
-                vars_out = [vars_out; obj.vars.(curr_var)];
+                vars_out = [vars_out; reshape(obj.vars.(curr_var), [], 1)];
             end
         end       
         
@@ -125,7 +125,7 @@ classdef subsystem_interface < handle
                         curr_var = obj.vars.(curr_name);
                         %declare a new variable
                         new_name = [curr_name, suffix];
-                        mpol(new_name, length(curr_var), 1);
+                        mpol(new_name, size(curr_var, 1), size(curr_var, 2));
                         %load the new variable into vars_new
                         vars_new.(curr_name) = eval(new_name);
 

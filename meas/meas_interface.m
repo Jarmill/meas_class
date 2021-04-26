@@ -128,7 +128,7 @@ classdef meas_interface < handle
 %         mom_lie(obj, d, vars_old, f_old, suppress_time)
 %         %moments of lie derivative
 %         
-%         mom_push(obj, d, vars_old, f_old)
+%         (obj, d, vars_old, f_old)
 %         %pushforward moments v(f(x)) - v(x)
                 
         recover(obj, tol)
