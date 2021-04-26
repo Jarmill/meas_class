@@ -1,6 +1,7 @@
 A = [-0.3 0.8;
     -0.75 -0.3];
 mpol('x', 2, 1);
+vars = struct;
 vars.x = x;
 
 f = A*x;

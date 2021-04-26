@@ -83,7 +83,7 @@ classdef meas_term < meas_collection
                 end
 
                 supp_curr = [tsupp ; XT_cell{i}; THT_cell{i}];
-                obj.meas{i} = obj.meas_def({'t', 'x', 'th'}, suffix, supp_curr);
+                obj.meas{i} = obj.meas_def(varnames, suffix, supp_curr);
             end                               
         end                                                          
         

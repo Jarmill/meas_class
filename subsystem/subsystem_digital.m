@@ -5,7 +5,10 @@ classdef subsystem_digital < subsystem_interface
     %TODO: Debug and determine if this class is correct
     
     properties
+        %maybe create a subsystem_uncertain?
        varnames = {'t', 'x', 'th', 'w'}; 
+       
+       %TODO: figure out how to incorporate TIME_INDEP into digital
     end
     
     methods
@@ -27,37 +30,7 @@ classdef subsystem_digital < subsystem_interface
             obj@subsystem_interface(loc_supp, f, sys_id, loc_id, @meas_uncertain);
                                      
         end
-        
-        
-        %% measure definition
-%         function meas_new = meas_def(obj, suffix)           
-%             %declare a variable for each measure
-%             vars_new = struct('t', [], 'x', [], 'th', [], 'w', []);           
-%             varnames = fields(vars_new);
-%             for i = 1:length(varnames)
-%                 curr_name = varnames{i};
-%                 curr_var = obj.vars.(curr_name);
-%                 
-%                 if ~isempty(curr_var)
-%                     %declare a new variable
-%                     new_name = [curr_name, obj.prefix, suffix];
-%                     mpol(new_name, length(curr_var), 1);
-%                     %load the new variable into vars_new
-%                     vars_new.(curr_name) = eval(new_name);
-%                 end
-% %                 obj.vars.(curr_var) = vars.(curr_var);
-%             end
-%             
-%            
-%            
-%             %create new support as well
-%                 
-%             supp_new = subs_vars(obj.supp, obj.get_vars(), ...
-%                             [vars_new.t; vars_new.x; vars_new.th; vars_new.w]);
-%            
-%             %define the measure
-%             meas_new = meas_uncertain(vars_new, supp_new);
-%         end
+               
         
         %% Constraints        
         function Ay = cons_liou(obj, d)

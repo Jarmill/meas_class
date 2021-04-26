@@ -2,6 +2,7 @@ A = [-0.3 0.8;
     -0.75 -0.3];
 mpol('x', 2, 1);
 mpol('w', 1, 1);
+vars = struct;
 vars.x = x;
 vars.w = w;
 

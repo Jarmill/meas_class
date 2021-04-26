@@ -108,16 +108,20 @@ classdef meas_collection < handle
             for i = 1:length(varnames)
                 curr_name = varnames{i};                
                 
-                if isfield(obj.vars, curr_name) && ~isempty(obj.vars.(curr_name))
-                    curr_var = obj.vars.(curr_name);
-                    %declare a new variable
-                    new_name = [curr_name, suffix];
-                    mpol(new_name, length(curr_var), 1);
-                    %load the new variable into vars_new
-                    vars_new.(curr_name) = eval(new_name);
-                    
-                    old_stack = [old_stack; reshape(obj.vars.(curr_name), [], 1)];
-                    new_stack = [new_stack; reshape(vars_new.(curr_name), [], 1)];
+                if isfield(obj.vars, curr_name) 
+                    if isempty(obj.vars.(curr_name))
+                        vars_new.(curr_name) = [];
+                    else
+                        curr_var = obj.vars.(curr_name);
+                        %declare a new variable
+                        new_name = [curr_name, suffix];
+                        mpol(new_name, length(curr_var), 1);
+                        %load the new variable into vars_new
+                        vars_new.(curr_name) = eval(new_name);
+
+                        old_stack = [old_stack; reshape(obj.vars.(curr_name), [], 1)];
+                        new_stack = [new_stack; reshape(vars_new.(curr_name), [], 1)];
+                    end
                 end
             end
                        
