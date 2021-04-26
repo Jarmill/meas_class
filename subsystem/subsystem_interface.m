@@ -95,7 +95,8 @@ classdef subsystem_interface < handle
         end
 
         
-        function abs_out = abscont(obj, d)
+        function abs_out = abscont_box(obj, d)
+            %ABSCONT_BOX absolute continuity for box-inputs if present
             abs_out = [];
         end
               

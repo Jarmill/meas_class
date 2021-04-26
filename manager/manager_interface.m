@@ -51,13 +51,13 @@ classdef manager_interface
             d = 2*order;
             
             %formulate constraints
-            [objective, mom_con, supp_con] = obj.cons(d, Tmax);
+            [objective, mom_con, supp_con, len_dual] = obj.cons(d, Tmax);
                         
             %solve the program
             sol = obj.solve(objective, mom_con,supp_con);
             
             %process dual variables
-            obj = obj.dual_process(d, sol.dual_rec);
+            obj = obj.dual_process(d, sol.dual_rec, len_dual);
         end
     end
     
@@ -69,7 +69,7 @@ classdef manager_interface
         %program at degree d
                        
         
-        dual_process(obj, d, dual_rec);
+        dual_process(obj, d, dual_rec, len_dual);
         %DUAL_PROCESS dispatch the dual variables from solution to
         %locations and measures, turn the variables into nonnegative
         %functions along trajectories

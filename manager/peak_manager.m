@@ -20,7 +20,7 @@ classdef peak_manager < manager_interface
         
         %% Formulating and solving program
         
-        function [objective, mom_con, supp_con] = cons(obj,d, Tmax)
+        function [objective, mom_con, supp_con, len_dual] = cons(obj,d, Tmax)
             %PEAK_CONS formulate support and measure constraints for peak
             %program at degree d
             %Input:
@@ -37,7 +37,8 @@ classdef peak_manager < manager_interface
                         
             %gather all constraints in each location
             %(loop over locations)
-            [objective, cons_eq, cons_ineq] = obj.loc.all_cons(d);
+            [objective, cons_eq, cons_ineq, len_dual] = ...
+                obj.loc.all_cons(d);
             %finalize moment constraints
             
             %mass of initial measure sums to one
@@ -61,7 +62,7 @@ classdef peak_manager < manager_interface
         end                    
      
         
-        function obj = dual_process(obj, d, dual_rec)
+        function obj = dual_process(obj, d, dual_rec, len_dual)
             %DUAL_PROCESS dispatch the dual variables from solution to
             %locations and measures, turn the variables into nonnegative
             %functions along trajectories
@@ -84,6 +85,7 @@ classdef peak_manager < manager_interface
             count_ineq = 0;
             
             %index out current dual variable coefficients
+            obj.loc.len_dual = len_dual;
             len_eq_curr = obj.loc.len_eq_cons();
             len_ineq_curr = obj.loc.len_dual.beta;
             

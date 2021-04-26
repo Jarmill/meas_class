@@ -66,9 +66,21 @@ classdef meas_collection < handle
             %measures in this terminal set union
             f_new = 0;
             for i = 1:length(obj.meas)
-                f_new = f_new + mom(obj.meas{i}.var_sub_end(vars_old, f_old));
+                f_new = f_new + mom(obj.meas{i}.var_sub(obj.stack_vars(vars_old), f_old));
             end
-        end                    
+        end       
+        
+        function vars_out = stack_vars(obj, vars)
+            %generate a stack of variables
+            %inefficient code, fix later
+            varnames = fields(vars);
+            vars_out = [];
+            for i = 1:length(varnames)
+                curr_var = varnames{i};
+                vars_out = [vars_out; reshape(vars.(curr_var), [], 1)];
+            end
+        end
+        
         
        %% moment recovery
         

@@ -144,8 +144,8 @@ classdef subsystem < subsystem_interface
             
         end       
         
-        function Ay = abscont(obj, d)
-            %absolute continuity constraints of each box+complement with 
+        function Ay = abscont_box(obj, d)
+            %ABSCONT_BOX absolute continuity constraints of each box+complement with 
             %respect to the occupation measure
             Ay = [];
             

@@ -1,4 +1,5 @@
 mset clear
+clear all
 %% variables
 
 mpol('t', 1, 1)
