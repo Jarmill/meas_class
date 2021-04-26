@@ -4,11 +4,12 @@ classdef subsystem < subsystem_interface
     
     properties
         
-        
+        q = 1;
         %additional measures for box uncertainty
         meas_box = {};  %box occupation measures
         meas_comp = {}; %box-complement occupation measures                
         
+        varnames = {'t', 'x', 'th', 'w'}; %names of variables in measure
         
         f_box = {};     %affine decomposition of dynamics 
                         %{no input, input 1, input 2, ...}                                                       
@@ -31,8 +32,8 @@ classdef subsystem < subsystem_interface
             end
             
             %superclass constructor
-            obj@subsystem_interface(loc_supp, f, sys_id, loc_id);
-
+            obj@subsystem_interface(loc_supp, f, sys_id, loc_id, @meas_uncertain);
+%             obj.meas_type = @meas_uncertain;
             
             obj.dual = struct('v', 0, 'Lv', 0, 'Lv_box', 0, 'zeta', 0, 'nn', 0);
                        
@@ -43,11 +44,11 @@ classdef subsystem < subsystem_interface
                 obj.meas_comp = cell(Nb, 1);
                 for i = 1:Nb
                     %box measure
-                    obj.meas_box{i}  = obj.meas_def(['box_', num2str(i)]);
+                    obj.meas_box{i}  = obj.meas_def({'t', 'x', 'th', 'w'}, '_box', obj.supp);
                     
                     
                     %box complement measure
-                    obj.meas_comp{i} = obj.meas_def(['comp_', num2str(i)]);
+                    obj.meas_comp{i} = obj.meas_def({'t', 'x', 'th', 'w'}, '_comp', obj.supp);
                     
                     
                     %process the dynamics f in terms of box dynamics
@@ -69,35 +70,35 @@ classdef subsystem < subsystem_interface
         end
         
         
-        %% measure definition
-        function meas_new = meas_def(obj, suffix)           
-            %declare a variable for each measure
-            vars_new = struct('t', [], 'x', [], 'th', [], 'w', []);           
-            varnames = fields(vars_new);
-            for i = 1:length(varnames)
-                curr_name = varnames{i};
-                curr_var = obj.vars.(curr_name);
-                
-                if ~isempty(curr_var)
-                    %declare a new variable
-                    new_name = [curr_name, obj.prefix, suffix];
-                    mpol(new_name, length(curr_var), 1);
-                    %load the new variable into vars_new
-                    vars_new.(curr_name) = eval(new_name);
-                end
-%                 obj.vars.(curr_var) = vars.(curr_var);
-            end
-            
-
-            %create new support as well
-
-            supp_new = subs_vars(obj.supp, obj.get_vars(), ...
-                            [vars_new.t; vars_new.x; vars_new.th; vars_new.w]);
-
-            
-            %define the measure
-            meas_new = meas_uncertain(vars_new, supp_new);
-        end
+%         %% measure definition
+%         function meas_new = meas_def(obj, suffix)           
+%             %declare a variable for each measure
+%             vars_new = struct('t', [], 'x', [], 'th', [], 'w', []);           
+%             varnames = fields(vars_new);
+%             for i = 1:length(varnames)
+%                 curr_name = varnames{i};
+%                 curr_var = obj.vars.(curr_name);
+%                 
+%                 if ~isempty(curr_var)
+%                     %declare a new variable
+%                     new_name = [curr_name, obj.prefix, suffix];
+%                     mpol(new_name, length(curr_var), 1);
+%                     %load the new variable into vars_new
+%                     vars_new.(curr_name) = eval(new_name);
+%                 end
+% %                 obj.vars.(curr_var) = vars.(curr_var);
+%             end
+%             
+% 
+%             %create new support as well
+% 
+%             supp_new = subs_vars(obj.supp, obj.get_vars(), ...
+%                             [vars_new.t; vars_new.x; vars_new.th; vars_new.w]);
+% 
+%             
+%             %define the measure
+%             meas_new = meas_uncertain(vars_new, supp_new);
+%         end
         
         %% Getters
         

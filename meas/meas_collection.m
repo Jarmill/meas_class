@@ -99,8 +99,7 @@ classdef meas_collection < handle
         
         function meas_new = meas_def(obj, varnames, suffix, supp_ref)           
             %MEAS_DEF Define the measures in the collection
-            %declare a variable for each measure (index ind in the union)
-%             vars_new = struct('t', [], 'x', [], 'th', []);           
+            %declare a variable for each measure (index ind in the union)         
 
             vars_new = struct;
             old_stack =[];

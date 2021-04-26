@@ -6,7 +6,7 @@ classdef subsystem_interface < handle
         vars;
         
         %measures
-        meas_occ = [];  %occupation measure
+        meas_occ = [];  %one occupation measure per subsystem
         
         f = [];         %dynamics
         
@@ -19,6 +19,8 @@ classdef subsystem_interface < handle
         
         supp;       %support of measures
         supp_sys;   %support of only x
+        
+        meas_type = @meas_base;
     end
     
     properties(Access = protected)
@@ -33,7 +35,7 @@ classdef subsystem_interface < handle
     
     methods
         %% Constructor
-        function obj = subsystem_interface(loc_supp, f, sys_id, loc_id)
+        function obj = subsystem_interface(loc_supp, f, sys_id, loc_id, meas_type)
             %SUBSYSTEM_INTERFACE Construct a subsystem, fill in information
             
             %process input
@@ -43,6 +45,10 @@ classdef subsystem_interface < handle
             
             if nargin < 4
                 loc_id = [];
+            end
+            
+            if nargin >= 5
+                obj.meas_type = meas_type;
             end
             
             %identification and names
@@ -63,7 +69,9 @@ classdef subsystem_interface < handle
             obj.f = f;
             obj.f_ = f; 
             
-            obj.meas_occ  = obj.meas_def('occ');          
+            
+            obj.meas_occ = obj.meas_def(obj.varnames, '_occ', obj.supp);
+%             obj.meas_occ  = obj.meas_def('occ');          
                                                                                 
         end
         
@@ -96,7 +104,45 @@ classdef subsystem_interface < handle
             %SUPP_ALL: get support set of all measures in subsystem
             
             supp_all = obj.meas_occ.supp;
-        end                        
+        end        
+        
+        %% Measure Creation
+         function meas_new = meas_def(obj, varnames, suffix, supp_ref)           
+            %MEAS_DEF Define the measures in the collection
+            %declare a variable for each measure (index ind in the union)
+
+            vars_new = struct;
+            old_stack =[];
+            new_stack = [];
+
+            for i = 1:length(varnames)
+                curr_name = varnames{i};                
+                
+                if isfield(obj.vars, curr_name) 
+                    if isempty(obj.vars.(curr_name))
+                        vars_new.(curr_name) = [];
+                    else
+                        curr_var = obj.vars.(curr_name);
+                        %declare a new variable
+                        new_name = [curr_name, suffix];
+                        mpol(new_name, length(curr_var), 1);
+                        %load the new variable into vars_new
+                        vars_new.(curr_name) = eval(new_name);
+
+                        old_stack = [old_stack; reshape(obj.vars.(curr_name), [], 1)];
+                        new_stack = [new_stack; reshape(vars_new.(curr_name), [], 1)];
+                    end
+                        
+                end
+            end
+                       
+            %get the support
+            supp_new = subs_vars(supp_ref, old_stack, new_stack);
+           
+            
+            %define the measure
+            meas_new = obj.meas_type(vars_new, supp_new);
+        end     
         
         %% Function Evaluation (for sampling)
         %TODO: Implement this
@@ -138,14 +184,16 @@ classdef subsystem_interface < handle
         function nn_out = nonneg_eval(obj, data)
             %data: [t, x, th, w] as required  
             nn_out = eval(obj.nn_, obj.get_vars(), data);
-        end                                  
+        end           
+        
+        
         
     end
     
     %% Overloads by inheritence
     methods(Abstract)
         
-        meas_new = meas_def(obj, suffix)           
+%         meas_new = meas_def(obj, suffix)           
         %declare a variable for each measure
         
         Ay = cons_liou(obj, d)
