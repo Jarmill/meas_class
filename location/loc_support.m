@@ -17,9 +17,10 @@ classdef loc_support
         Tmax(1,1) double{mustBePositive}  = 5;
         
         
-        TIME_INDEP = 0; %
+        TIME_INDEP = 0; %include time in dynamics (time independent)
         FREE_TERM = 1;  %free terminal time between 0 and Tmax
-        DIGITAL = 0;
+        DIGITAL = 0;    %discrete system rather than continuous
+        SCALE_TIME = 1; %scale time to [0, 1] in dynamics
         
         %state:
         %all space

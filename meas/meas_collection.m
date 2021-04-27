@@ -90,16 +90,34 @@ classdef meas_collection < handle
         
         function d_out = mmat(obj)
             %return moment matrix evaluated at current solution
-            d_out = cellfun(@(m) m.mmat(), obj.meas, 'UniformOutput', 'false');
+            d_out = cellfun(@(m) m.mmat(), obj.meas, 'UniformOutput', false);
 %             d_out = double(mmat(obj.meas));
+
+            if length(d_out) == 1
+                d_out = d_out{1};
+            end
+        end
+
+                
+        function d_out = mvec(obj)
+            %return the moment vector at the current solution            
+            d_out = cellfun(@(m) m.mvec(), obj.meas, 'UniformOutput', false);
+            
+            if length(d_out) == 1
+                d_out = d_out{1};
+            end
         end
         
         function d_out = mmat_corner(obj)
             %return top-corner moment matrix evaluated at current solution
             %only moments of order 0-2 in square matrix
-            d_out = cellfun(@(m) m.mmat_corner(), obj.meas, 'UniformOutput', 'false');
+            d_out = cellfun(@(m) m.mmat_corner(), obj.meas, 'UniformOutput', false);
+            
+            if length(d_out) == 1
+                d_out = d_out{1};
+            end
         end
-        
+
                 
         %% overloads
         function e = isempty(obj)

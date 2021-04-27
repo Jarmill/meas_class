@@ -101,33 +101,35 @@ classdef meas_term < meas_collection
                 mmmon_out = mmmon_out + mom(mmon_out);
             end            
         end  
-                   
+                         
         
-        %% moment recovery        
-        function d_out = mmat(obj)
-            %return moment matrix evaluated at current solution
-            d_out = cellfun(@(m) m.mmat(), obj.meas, 'UniformOutput', 'false');
-%             d_out = double(mmat(obj.meas));
+        %% recovery
+        function [optimal, mom_out, corner] = recover(obj, tol)
+            %RECOVER if top corner of the moment matrix is rank-1, then
+            %return approximate optimizer
+            if nargin < 2
+                tol = 5e-4;
+            end
+            
+            Nmeas = length(obj.meas);
+            optimal_cell = zeros(Nmeas, 1);
+            mom_out_cell = cell(Nmeas, 1);
+            corner_cell  = cell(Nmeas, 1);
+            for i = 1:Nmeas
+                [optimal_cell(i), mom_out_cell{i}, corner_cell{i}] = obj.meas{i}.recover(tol);
+            end
+            
+            if any(optimal_cell)
+                optimal = 1;
+                mom_out = mom_out_cell{optimal_cell == 1};
+                corner= corner_cell{optimal_cell == 1};
+            else
+                optimal = 0;
+                mom_out = struct('t', [], 'x', [], 'th', []);
+                corner = [];
+            end
         end
         
-        function d_out = mmat_corner(obj)
-            %return top-corner moment matrix evaluated at current solution
-            %only moments of order 0-2
-%             monom_curr = obj.monom(0, 1);
-%             mmat_curr = mom(monom_curr*monom_curr');            
-%             d_out = double(mmat_curr);
-            d_out = cellfun(@(m) m.mmat_corner(), obj.meas, 'UniformOutput', 'false');
-        end
-        
-                
-        %% overloads
-        function e = isempty(obj)
-            %is the support empty?
-            %as in supp = []. The harder question would be 'does the basic
-            %semialgebraic set formed by the constraints satisfy a
-            %nullstellensatz?'
-            e = isempty(obj.meas);
-        end
         
         
         

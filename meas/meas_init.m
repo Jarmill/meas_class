@@ -80,56 +80,38 @@ classdef meas_init < meas_collection
                 if ~isempty(loc_id)
                     suffix = ['_', num2str(loc_id), suffix];
                 end
-%                 suffix = ['_', num2str(loc_id), '_', num2str(i), '_init'];
                 supp_curr = [obj.vars.t==0; X0_cell{i}; TH0_cell{i}];
                 obj.meas{i} = obj.meas_def({'t', 'x', 'th'}, suffix, supp_curr);
             end
-            
-%             obj.N0 = N0;
-%             obj.X0 = X0_cell;
-%             obj.TH0 = TH0_cell;
-                       
+                                   
         end
 
-        
-        
-        
-        %monomials: gloptipoly cannot add together monomials from different
-        %measures
-                
-        %% measures
-%         function meas_new = meas_def(obj, suffix, supp_ref)           
-%             %MEAS_DEF Define the measures in the collection
-%             %declare a variable for each measure (index ind in the union)
-%             vars_new = struct('t', [], 'x', [], 'th', []);           
-%             varnames = fields(vars_new);
-%             for i = 1:length(varnames)
-%                 curr_name = varnames{i};
-%                 curr_var = obj.vars.(curr_name);
-%                 
-%                 if ~isempty(curr_var)
-%                     %declare a new variable
-%                     new_name = [curr_name, suffix];
-%                     mpol(new_name, length(curr_var), 1);
-%                     %load the new variable into vars_new
-%                     vars_new.(curr_name) = eval(new_name);
-%                 end
-% %                 obj.vars.(curr_var) = vars.(curr_var);
-%             end
-%                        
-%                 supp_new = subs_vars(supp_ref, [obj.vars.t; obj.vars.x; obj.vars.th], ...
-%                                 [vars_new.t; vars_new.x; vars_new.th]);
-%            
-%             
-%             %define the measure
-%             meas_new = meas_uncertain(vars_new, supp_new);
-%         end
-        
-                        
-        
-                               
-        
-        
+        %% recovery
+        function [optimal, mom_out, corner] = recover(obj, tol)
+            %RECOVER if top corner of the moment matrix is rank-1, then
+            %return approximate optimizer
+            if nargin < 2
+                tol = 5e-4;
+            end
+            
+            Nmeas = length(obj.meas);
+            optimal_cell = zeros(Nmeas, 1);
+            mom_out_cell = cell(Nmeas, 1);
+            corner_cell  = cell(Nmeas, 1);
+            for i = 1:Nmeas
+                [optimal_cell(i), mom_out_cell{i}, corner_cell{i}] = obj.meas{i}.recover(tol);
+            end
+            
+            if any(optimal_cell)
+                optimal = 1;
+                mom_out = mom_out_cell{optimal_cell == 1};
+                corner= corner_cell{optimal_cell == 1};
+            else
+                optimal = 0;
+                mom_out = struct('t', [], 'x', [], 'th', []);
+                corner = [];
+            end
+        end
         
     end
 end

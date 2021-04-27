@@ -61,7 +61,7 @@ classdef location_interface
             Nsys = length(obj.f);
 
             
-            if ~obj.supp.TIME_INDEP
+            if ~obj.supp.TIME_INDEP && obj.supp.SCALE_TIME
                 %scale for time if time is a variable
                 Tmax = obj.supp.Tmax;
                 for i = 1:Nsys

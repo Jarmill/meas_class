@@ -97,7 +97,7 @@ classdef meas_uncertain < meas_interface
                 optimal = 1;
                 mom_out.t = [];
                 mom_out.x = [];
-                mom_out.w = [];
+                mom_out.th = [];
                 corner = zeros(size(corner));
             else
                 rankM = rank(corner, tol);            
@@ -105,7 +105,7 @@ classdef meas_uncertain < meas_interface
 
                 mom_out.t = corner(2, 1);
                 mom_out.x = corner(2+(1:length(obj.vars.x)), 1);
-                mom_out.w = corner((2+length(obj.vars.x)) + (1:length(obj.vars.w)), 1);
+                mom_out.th = corner((2+length(obj.vars.x)) + (1:length(obj.vars.th)), 1);
             end
         end                
         
