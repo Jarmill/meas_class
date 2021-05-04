@@ -10,7 +10,7 @@ classdef meas_base < meas_interface
 
             obj@meas_interface(vars, supp);
             
-            if isnumeric(obj.supp)
+            if isnumeric(obj.supp) && ~isempty(obj.supp)
                 supp_new = ([vars.t; vars.x] == supp);
                 obj.supp = supp_new;
             end

@@ -20,7 +20,13 @@ classdef manager_interface
                 'mosek.MSK_DPAR_INTPNT_TOL_PATH', 1e-6);
         end
         
-
+        function [optimal, mom_out, corner] = recover(obj, tol)
+            if nargin < 2
+                tol = 5e-4;
+            end
+            [optimal, mom_out, corner] = obj.loc.recover(tol);
+            
+        end
          
         function sol = solve(obj, objective, mom_con,supp_con)
             %SOLVE formulate and solve peak estimation program from
