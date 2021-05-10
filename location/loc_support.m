@@ -40,6 +40,11 @@ classdef loc_support
         
         % time-independent uncertainty
         param = []; %(theta)
+        
+        % polytopic uncertainty
+        poly = [];
+        %if filled, would be struct('A', [matrix], 'b', [vector])
+        
     end
     
     methods

@@ -43,7 +43,11 @@ classdef location < location_interface
                 if obj.supp.DIGITAL
                     obj.sys{i} = subsystem_digital(obj.supp, obj.f{i}, i, id);
                 else
-                    obj.sys{i} = subsystem(obj.supp, obj.f{i}, i, id);
+                    if isempty(obj.supp.poly)
+                        obj.sys{i} = subsystem(obj.supp, obj.f{i}, i, id);
+                    else
+                        obj.sys{i} = subsystem_poly(obj.supp, obj.f{i}, i, id);
+                    end 
                 end
             end                                                               
         end
@@ -161,7 +165,13 @@ classdef location < location_interface
              count_zeta = obj.len_dual.v;
              
              %iterate through all subsystems
-             Nb = length(obj.vars.b);
+             
+             if isempty(obj.supp.poly)
+                 Nzeta = length(obj.vars.b);
+             else
+                 Nzeta = length(obj.supp.poly.b);
+             end
+%              Nb = length(obj.vars.b);
              monom_all = mmon(obj.get_vars(), 0, d);
              
              %TODO: confirm that all abscont relations have the same length
@@ -170,7 +180,7 @@ classdef location < location_interface
                  
                  %untangle the box zeta functions
                  zeta = [];
-                 for j = 1:Nb
+                 for j = 1:Nzeta
                      zeta_coeff = rec_eq(count_zeta + (1:len_monom_all));
                      zeta_curr = zeta_coeff'*monom_all;
                      zeta = [zeta; zeta_curr];   
@@ -267,46 +277,6 @@ classdef location < location_interface
         %something about processing dual_rec to get nonnegative functions
         
         
-
-        
-%         %% Sampler
-%         
-%         %TODO: completely rework this section. Use no-class sampler code as
-%         %a model for continuous and discrete sampling
-%         function out_sim = sample_traj_loc(obj, t0, x0, Tmax, curr_event)
-%             %SAMPLE_TRAJ_LOC Sample a single trajectory starting at (t0, x0) in
-%             %this location. Stop when the the trajectory hits a guard or
-%             %strays outside the location's support region
-%             %
-%             %curr_event handles the event detection for leaving the support
-%             %region, and guards if enabled.
-%             %
-%             %OUTPUT:
-%             %out_sim is a struct holding the simulation output: time,
-%             %state, objective, and nonnegative functions from the dual
-%             %solution of SDP.
-%             
-%             if nargin < 5
-%                 curr_event = @obj.supp_event;
-%             end
-%             
-%             
-%             %simulate the trajectory
-%             curr_ode_options = odeset('Events',curr_event, 'RelTol', 1e-7, ...
-%                                       'AbsTol', 1e-8, 'MaxStep', 0.01);
-%         
-%             out_sim = struct;
-%             [out_sim.t, out_sim.x] = ode15s(@obj.f_eval, [t0, Tmax], x0, curr_ode_options);
-%             
-%             %evaluate nonnegative functions
-%             if obj.dual.solved
-%                 out_sim.nonneg = obj.nonneg(out_sim.t', out_sim.x')';
-%             end
-%             
-%             out_sim.objective = obj.obj_eval(out_sim.t', out_sim.x')';
-%             out_sim.id = obj.id;
-%         end
-%                 
     end
 end
 

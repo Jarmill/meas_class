@@ -1,23 +1,27 @@
-classdef subsystem < subsystem_interface
-    %SUBSYSTEM A subsystem x'=f(t, x, th, w, b) of a possibly uncertain 
-    %dynamical system in measure analysis    
+classdef subsystem_poly < subsystem_interface
+    %SUBSYSTEM_POLY A subsystem x'=f(t, x, th, w, b) of a dynamical system 
+    %where the uncertainty b is constrained to a polytope. This class is meant
+    %may be applied to data-driven measure analysis
     
     properties
                 
-        %additional measures for box uncertainty
-        meas_box = {};  %box occupation measures
-        meas_comp = {}; %box-complement occupation measures                
+        %additional measures for polytopic uncertainty
+        meas_pos  = {};  %box occupation measures
+        meas_neg  = {};  %box occupation measures
+        meas_comp = {};  %box-complement occupation measures                
         
         varnames = {'t', 'x', 'th', 'w'}; %names of variables in measure
         
-        f_box = [];     %affine decomposition of dynamics 
-                        %{no input, input 1, input 2, ...}                                                       
+        f_poly = [];     %affine decomposition of dynamics 
+                        %{no input, input 1, input 2, ...}        
+                        
+        poly = [];
     end
 
     
     methods
         %% Constructor
-        function obj = subsystem(loc_supp, f, sys_id, loc_id)
+        function obj = subsystem_poly(loc_supp, f, sys_id, loc_id)
             %SUBSYSTEM Construct a continuous (possibly uncertain) 
             %subsystem, fill in information
             
@@ -39,33 +43,42 @@ classdef subsystem < subsystem_interface
             %box-occupation measures definition
             if ~isempty(obj.vars.b)
                 Nb = length(obj.vars.b);
-                obj.meas_box = cell(Nb, 1);
-                obj.meas_comp = cell(Nb, 1);
+
+                
+                obj.poly = loc_supp.poly;
+                
+                Nconstraint = length(obj.poly.b);
+                obj.meas_pos = cell(Nb, 1);
+                obj.meas_neg = cell(Nb, 1);
+                obj.meas_comp = cell(Nconstraint, 1);
                 for i = 1:Nb
-                    %box measure
+                    %positive and negative input measures
                     if Nb == 1
                         suffix_add = [];
                     else
                         suffix_add = ['_', num2str(i)];
                     end
-                    obj.meas_box{i}  = obj.meas_def({'t', 'x', 'th', 'w'}, ['_box', suffix_add], obj.supp);
-                    
-                    
-                    %box complement measure
+                    obj.meas_pos{i}  = obj.meas_def({'t', 'x', 'th', 'w'}, ['_pos', suffix_add], obj.supp);
+                    obj.meas_neg{i}  = obj.meas_def({'t', 'x', 'th', 'w'}, ['_neg', suffix_add], obj.supp);                                        
+                end
+                
+                for i = 1:Nconstraint
+                    %polytope complement measure
+                    suffix_add = ['_', num2str(i)];
                     obj.meas_comp{i} = obj.meas_def({'t', 'x', 'th', 'w'}, ['_comp', suffix_add], obj.supp);
                     
                 end    
                 %process the dynamics f in terms of box dynamics
-                %f_box: [no input, input 1, input 2, ...]
-                obj.f_box = zeros(length(obj.f), Nb+1) * obj.vars.b(1);
+                %f_poly: [no input, input 1, input 2, ...]
+                obj.f_poly = zeros(length(obj.f), Nb+1) * obj.vars.b(1);
                 f0 = subs(obj.f, obj.vars.b, zeros(Nb, 1));                    
-                obj.f_box(:, 1) = f0;
+                obj.f_poly(:, 1) = f0;
 
                 %each input channel at a time
                 I = eye(Nb);
 
                 for k = 1:Nb
-                    obj.f_box(:, k+1) = subs(obj.f, obj.vars.b, I(:, k)) - f0;                        
+                    obj.f_poly(:, k+1) = subs(obj.f, obj.vars.b, I(:, k)) - f0;                        
                 end
                                                                 
                 
@@ -98,19 +111,16 @@ classdef subsystem < subsystem_interface
                 %non-trivial box inputs, more involved processing
                 
                 Nb = length(obj.vars.b);
-                %base occupation measure (with no box disturbance)
-%                 vars_
-                Ay = obj.meas_occ.mom_lie(d, obj.get_vars, obj.f_box(:, 1));
+                %base occupation measure (with no polytopic disturbances)
+                Ay = obj.meas_occ.mom_lie(d, obj.get_vars, obj.f_poly(:, 1));
                 
-                %each input channel at a time
-%                 I = eye(Nb);
                 
                 for k = 1:Nb
-%                     fk = subs(obj.f, obj.vars.b, I(:, k)) - f0;
-                    Ay_curr = obj.meas_box{k}.mom_lie(d, obj.get_vars, obj.f_box(:, k+1), 0);
-                    
+                    Ay_pos = obj.meas_pos{k}.mom_lie(d, obj.get_vars, obj.f_poly(:, k+1), 0);
+                    Ay_neg= obj.meas_neg{k}.mom_lie(d, obj.get_vars, obj.f_poly(:, k+1), 0);
+
                     %add contribution to lie derivative
-                    Ay = Ay + Ay_curr;
+                    Ay = Ay + Ay_pos - Ay_neg;
                 end
                 
             end
@@ -118,18 +128,45 @@ classdef subsystem < subsystem_interface
         end       
         
         function Ay = abscont_box(obj, d)
-            %ABSCONT_BOX absolute continuity constraints of each box+complement with 
+            %ABSCONT_BOX absolute continuity constraints of each input+complement with 
             %respect to the occupation measure
             Ay = [];
             
+            Nconstraints = length(obj.poly.b);                        
+            
+            %cons b >= ans
+            %-cons b <= -ans
+            
+            cons_mat = obj.poly.A;
+            ans_vec = obj.poly.b;
+            
             %moments of each measure
             mom_occ = obj.meas_occ.mom_monom(d);
-            for i = 1:length(obj.vars.b)
-                mom_box  = obj.meas_box{i}.mom_monom(d);
-                mom_comp = obj.meas_comp{i}.mom_monom(d);
+            Nb = length(obj.vars.b);
+            
+            for j = 1:Nconstraints        
+                
+                %For each constraint Ab <= d
+                %the abscont constraint is
+                %Sum_i <v A_ij, (bi+)+(bi-)>  + <v, (slackj) = d_j <v, occ>
+                
+                poly_contrib = 0;
+                for i = 1:Nb
+                    weight_curr = cons_mat(j, i);
+                    if weight_curr ~= 0
+
+                        mom_pos= obj.meas_pos{i}.mom_monom(d) * weight_curr;
+                        mom_neg= obj.meas_neg{i}.mom_monom(d) * weight_curr;
+                    
+                        poly_contrib = poly_contrib + mom_pos + mom_neg;
+                    end
+                end
+
+                mom_comp = obj.meas_comp{j}.mom_monom(d);
                 
                 %absolute continuity constraint
-                Ay_curr = -mom_occ + mom_box + mom_comp;
+                %A(input) <= b
+                Ay_curr = -mom_occ * ans_vec(j) + poly_contrib + mom_comp;
                 Ay = [Ay; Ay_curr]; 
             end
         end        
@@ -141,11 +178,19 @@ classdef subsystem < subsystem_interface
             %SUPP_ALL: get support set of all measures in subsystem
             
             supp_all = obj.meas_occ.supp;
-            for i = 1:length(obj.meas_box)
-                supp_box = obj.meas_box{i}.supp;
+            
+            %input measures
+            for i = 1:length(obj.meas_pos)
+                supp_pos = obj.meas_pos{i}.supp;
+                supp_neg = obj.meas_neg{i}.supp;
+                                
+                supp_all = [supp_all; supp_pos; supp_neg];                
+            end
+            
+            %complement measures
+            for i = 1:length(obj.meas_comp)
                 supp_comp = obj.meas_comp{i}.supp;
-                
-                supp_all = [supp_all; supp_box; supp_comp];
+                supp_all = [supp_all; supp_comp];
             end
         end
         
@@ -170,11 +215,14 @@ classdef subsystem < subsystem_interface
                 obj.dual.nn = -obj.dual.Lv;
             else
                 Nb = length(obj.vars.b);
+                Nconstraints = length(obj.poly.b);
                 %store all derivatives of v with respect to box occupation                
                 Lv_box = zeros(Nb+1, 1)*obj.vars.b(1);
                 
+                %TODO: fix this
+                
                 for i = 1:(Nb+1)
-                    Lv_box(i) = diff(v, obj.vars.x)*obj.f_box(:, i);
+                    Lv_box(i) = diff(v, obj.vars.x)*obj.f_poly(:, i);
                     
                     if i==1 && ~isempty(obj.vars.t)
                         Lv_box(i) = Lv_box(i) + diff(v, obj.vars.t);
@@ -182,11 +230,11 @@ classdef subsystem < subsystem_interface
                 end
                 obj.dual.Lv_box = Lv_box;
                 %TODO: check the signs of these 
-                nn_occ = -Lv_box(1) + sum(zeta);
-                nn_box = -Lv_box(2:end) + zeta;
+                nn_occ = -Lv_box(1) + obj.poly.b'*(zeta);
+                nn_poly = -Lv_box(2:end) + obj.poly.A'*zeta;
                 nn_comp = zeta;
                 
-                obj.dual.nn = [nn_occ; nn_box; nn_comp];                
+                obj.dual.nn = [nn_occ; nn_poly; nn_comp];                
             end          
             
             obj.nn_ = obj.dual.nn;

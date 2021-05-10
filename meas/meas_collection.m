@@ -131,6 +131,21 @@ classdef meas_collection < handle
         %% variable definition
         %used in meas_def to define a set of new variables
         
+        function obj = meas_fill(obj, varnames, suffix, supp_ref, Nmeas)
+            %MEAS_FILL fill in the measure collection with Nmeas measures
+            %with identical supports and variables
+            
+            obj.meas = cell(Nmeas, 1);
+            for i = 1:Nmeas
+                if Nmeas > 1
+                    suffix_curr = [suffix, '_', num2str(i)];
+                else
+                    suffix_curr = suffix;
+                end
+                obj.meas{i} = obj.meas_def(varnames, suffix_curr, supp_ref);
+            end
+        end
+        
         function meas_new = meas_def(obj, varnames, suffix, supp_ref)           
             %MEAS_DEF Define the measures in the collection
             %declare a variable for each measure (index ind in the union)         
