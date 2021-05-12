@@ -89,7 +89,7 @@ classdef location < location_interface
             len_dual = struct;
             len_dual.v = len_liou;
             len_dual.zeta = len_abscont;
-            len_dual.beta = length(cons_ineq);
+            len_dual.beta = max(0, length(cons_ineq)-1);
             
             %ensure this iss the correct sign
             cons_eq = [-liou; abscont_box]==0;                        
@@ -131,7 +131,7 @@ classdef location < location_interface
                 obj.cost_q = q;
                 
                 obj_max = mom(q);
-                obj_con = [mass(q) == 1; (mom(q) <= mom(obj_subs));];
+                obj_con = [mass(q) == 1; (mom(q) <= obj_subs);];
             end            
         end
                

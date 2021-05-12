@@ -21,20 +21,26 @@ lsupp = loc_support(vars);
 % lsupp = lsupp.set_box(4);
 lsupp = lsupp.set_box([-1, 3; -1.5, 2]);
 lsupp.X_init = X0;
-lsupp.Tmax = 10;
+lsupp.Tmax = 5;
 %% testing peak estimation
 
 %dynamics
 % f = [x(2); -x(1) + (1/3).* x(1).^3 - x(2)];
 
-dmax = 0.5;
+% dmax = 0.5;
 % dmax = 0.4;
 % dmax = 0.3;
 % dmax = 0.2;
+dmax = 0.15;
 draw = dmax.*(2.*b - 1);
-f = [x(2); -x(1) - x(2) + (1/3).* x(1).^3 + draw];
+% f = [x(2); -x(1)*(1+ draw) - x(2) + (1/3).* x(1).^3 ];
+f0 = [x(2); -(1-dmax)*x(1)-x(2)+(x(1)^3)/3];
+f1 = [0; -2*dmax*x(1)];
+f = f0 + b*f1;
 
-objective = -x(2);
+% objective = -x(2);
+objective = -sum(x);
+% objective = -x;
 
 PM = peak_manager(lsupp, f, objective);
 
@@ -42,5 +48,6 @@ PM = peak_manager(lsupp, f, objective);
 order = 4;
 % d = 2*order;
 sol = PM.run(order, lsupp.Tmax);
+sol.obj_rec
 % [obj_p, mom_con, supp_con, len_liou, len_abscont] = PM.peak_cons(d);
 % sol = PM.peak_solve(obj_p, mom_con,supp_con);
