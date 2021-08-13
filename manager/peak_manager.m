@@ -77,6 +77,8 @@ classdef peak_manager < manager_interface
             %liouville
             %time independent
 %             v_coeff = rec_eq(1:len_liou);
+
+    
                         
             gamma = rec_eq(end);
             
@@ -85,14 +87,24 @@ classdef peak_manager < manager_interface
             count_ineq = 0;
             
             %index out current dual variable coefficients
-            obj.loc.len_dual = len_dual;
-            len_eq_curr = obj.loc.len_eq_cons();
-            len_ineq_curr = obj.loc.len_dual.beta;
+%             obj.loc.len_dual = len_dual;
+
+            if nargin < 4
+                len_dual=obj.loc.len_dual;
+                len_eq_curr = obj.loc.len_eq_cons();
+                len_ineq_curr = obj.loc.len_dual.beta;
+            else
+                len_eq_curr = len_dual.v + sum(len_dual.zeta);
+                len_ineq_curr = len_dual.beta;
+            end
+
+%             len_eq_curr = obj.loc.len_eq_cons();
+%             len_ineq_curr = obj.loc.len_dual.beta;
             
             rec_eq_curr = rec_eq(count_eq + (1:len_eq_curr));
             rec_ineq_curr = rec_ineq(count_ineq + (1:len_ineq_curr));
             
-            obj.loc = obj.loc.dual_process(d, rec_eq_curr, rec_ineq_curr, gamma);
+            obj.loc = obj.loc.dual_process(d, rec_eq_curr, rec_ineq_curr, gamma, len_dual);
             
             %prepare for next location (for future code)
             count_eq = count_eq + len_eq_curr;

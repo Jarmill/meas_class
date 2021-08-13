@@ -25,7 +25,7 @@ classdef sampler_base < sampler_base_interface
             %solution of LMI (TODO).
             
             %only one location
-            curr_event = @obj.loc.supp_event;
+            curr_event = @(t,x) obj.loc.supp_event(t,x);
             
             %dynamics
             curr_sys = obj.loc.sys{1};            

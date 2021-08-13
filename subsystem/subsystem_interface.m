@@ -54,9 +54,9 @@ classdef subsystem_interface < handle
             %identification and names
             obj.loc_id = loc_id;
             obj.sys_id = sys_id;
-            obj.prefix = ['_', num2str(sys_id), '_'];
+            obj.prefix = ['_', num2str(sys_id)];
             if ~isempty(loc_id)
-                obj.prefix = [num2str(loc_id), obj.prefix];
+                obj.prefix = ['_', num2str(loc_id), obj.prefix];
             end
             
             %support            
@@ -70,7 +70,7 @@ classdef subsystem_interface < handle
             obj.f_ = f; 
             
             
-            obj.meas_occ = obj.meas_def(obj.varnames, '_occ', obj.supp);
+            obj.meas_occ = obj.meas_def(obj.varnames, [obj.prefix,'_occ'], obj.supp);
 %             obj.meas_occ  = obj.meas_def('occ');          
                                                                                 
         end

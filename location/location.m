@@ -138,7 +138,7 @@ classdef location < location_interface
         
         %% Dual variables
         
-        function obj = dual_process(obj, d, rec_eq, rec_ineq, gamma)
+        function obj = dual_process(obj, d, rec_eq, rec_ineq, gamma, len_dual)
              %DUAL_PROCESS turn the dual variables from solution into 
              %polynomials and interpretable quantities
              %
@@ -158,11 +158,11 @@ classdef location < location_interface
              %process the polynomials
              
              %auxiliary function v
-             v_coeff = rec_eq(1:obj.len_dual.v);
+             v_coeff = rec_eq(1:len_dual.v);
              monom = mmon(obj.get_vars_end(), 0, d);
              obj.dual.v = v_coeff'*monom;
              
-             count_zeta = obj.len_dual.v;
+             count_zeta = len_dual.v;
              
              %iterate through all subsystems
              

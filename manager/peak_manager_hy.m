@@ -31,7 +31,7 @@ classdef peak_manager_hy < manager_interface
         
         %% Formulating and solving program
         
-        function [objective, mom_con, supp_con, len_liou] = cons(obj,d, Tmax)
+        function [objective, mom_con, supp_con, len_dual] = cons(obj,d, Tmax)
             %CONS formulate support and measure constraints for peak
             %program at degree d
             %Input:
@@ -60,7 +60,7 @@ classdef peak_manager_hy < manager_interface
                 supp_con = [supp_con; loc_curr.supp_con()];
 
                 %find moment constraints of current location
-                [obj_curr, obj_con_curr] = loc_curr.objective_con(d);                                
+                [obj_curr, obj_con_curr] = loc_curr.objective_con();                                
                 
                 if ~isempty(obj_curr)
                     objective = objective + obj_curr;
@@ -70,8 +70,8 @@ classdef peak_manager_hy < manager_interface
                 liou_con{i} = loc_curr.liou_con(d);  
                                  
                 %initial measure has mass 1
-                if ~isempty(loc_curr.meas_init)
-                    mass_init_sum = mass_init_sum + loc_curr.meas_init.mass();
+                if ~isempty(loc_curr.init)
+                    mass_init_sum = mass_init_sum + loc_curr.init.mass();
                 end
                 
                 if isempty(loc_curr.vars.t)
@@ -112,7 +112,7 @@ classdef peak_manager_hy < manager_interface
             
             %TIME-INDEPENDENT mass of occupation measures are less than
             %Tmax. Only when t is not included as a variable;
-            if isnumeric(mass_occ_sum) && (nargin > 2)
+            if isnumeric(mass_occ_sum) 
                 
                 %TODO: access Tmax
                 mass_occ_con = [];
@@ -125,7 +125,7 @@ classdef peak_manager_hy < manager_interface
             end
             
             
-            loc_con = [];
+%             loc_con = [];
             liou_con_all = [];
             obj_con_all = [];
             for i = 1:length(liou_con)
@@ -136,11 +136,21 @@ classdef peak_manager_hy < manager_interface
                 obj_con_all  = [obj_con_all; obj_con{i}];
             end
                 
-            len_liou = length(liou_con_all);
+%             len_liou = length(liou_con_all);
             
                         
             mom_con = [liou_con_all; mass_init_con; mass_occ_con; obj_con_all; zeno_con];
 
+            
+            %find the lengths of the dual functions
+            
+            %TODO: abscont for zeta
+            len_dual = struct;
+            len_dual.v = cellfun(@length, liou_con);
+            len_dual.beta = cellfun(@(ob) max(0, length(ob)-1), obj_con);
+%             len_dual.zeta = cellfun(@(l) max(0, length(l)), obj_con);
+            len_dual.alpha = length(zeno_con);
+            
         end                    
     
         
@@ -163,7 +173,7 @@ classdef peak_manager_hy < manager_interface
             
         end
         
-        function obj = dual_process(obj, order, dual_rec, gamma)
+        function obj = dual_process(obj, d, dual_rec, len_dual)
             %DUAL_PROCESS dispatch the dual variables from solution to
             %locations and measures, turn the variables into nonnegative
             %functions along trajectories
@@ -175,9 +185,9 @@ classdef peak_manager_hy < manager_interface
             rec_eq = dual_rec{1};
             rec_ineq = dual_rec{2};
             
-            if nargin < 3
-                gamma = rec_eq(end);
-            end
+            
+            gamma = rec_eq(end);
+           
                         
             
             liou_offset = 0;
@@ -186,15 +196,16 @@ classdef peak_manager_hy < manager_interface
                 
                 loc_curr = obj.loc{i};
                 
-                %liouville
-                %time independent
-                if isempty(loc_curr.vars.t)
-                    nvar_curr = length(loc_curr.vars.x);
-                else
-                    nvar_curr = length(loc_curr.vars.x)+1;
-                end
-                liou_len_curr = nchoosek(nvar_curr + 2*order, 2*order);
-                
+%                 %liouville
+%                 %time independent
+%                 if isempty(loc_curr.vars.t)
+%                     nvar_curr = length(loc_curr.vars.x);
+%                 else
+%                     nvar_curr = length(loc_curr.vars.x)+1;
+%                 end
+%                 liou_len_curr = nchoosek(nvar_curr + d, d);
+%                 
+                liou_len_curr = len_dual.v(i);
                 v_coeff = rec_eq((1:liou_len_curr) + liou_offset);
                                 
                 liou_offset = liou_offset + liou_len_curr;
@@ -210,13 +221,14 @@ classdef peak_manager_hy < manager_interface
                     beta_curr = 1;
                 end
                 
-                loc_curr.dual_process(order, v_coeff, beta_curr, gamma);
+                len_dual_curr = struct('v', len_dual.v(i), 'beta', len_dual.beta(i), 'zeta', []);
+                obj.loc{i} = loc_curr.dual_process(d, v_coeff, beta_curr, gamma, len_dual_curr);
                 
             end            
             
             for i = 1:length(obj.guards)
 %                 obj.guards{i}.zeno_dual = rec_ineq(cost_con_offset + i);
-                obj.guards{i}.dual_process(rec_ineq(cost_con_offset + i));
+                obj.guards{i}= obj.guards{i}.dual_process(rec_ineq(cost_con_offset + i));
             end                        
         end
         

@@ -20,13 +20,14 @@ lsupp = loc_support(vars);
 lsupp = lsupp.set_box(4);
 lsupp.X_init = X0;
 lsupp.Tmax = 10;
+% lsupp.vars
 %% testing peak estimation
 
 %dynamics
 f = [x(2); -x(1) + (1/3).* x(1).^3 - x(2)];
 objective = -x(2);
 
-loc = location(1, lsupp, f, objective);
+loc = location(lsupp, f, objective, 1);
 
 
 smp = struct('x', @() circle_sample(1)'*R0 + C0);

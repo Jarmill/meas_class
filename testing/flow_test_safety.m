@@ -27,8 +27,24 @@ lsupp.Tmax = 5;
 
 %dynamics
 f = [x(2); -x(1) + (1/3).* x(1).^3 - x(2)];
+
+
+
+%unsafe set
+Cu = [0; -0.5];
+%Cu = [2.5; 0];
+Ru = 0.5;
+c1f = Ru^2 - (x(1) - Cu(1)).^2 - (x(2) - Cu(2)).^2;
+
+theta_c = 5*pi/4;       %p* = -0.1417, beta = [0, 1]
+w_c = [cos(theta_c); sin(theta_c)];
+c2f = w_c(1)*(x(1) - Cu(1)) + w_c(2) * (x(2) - Cu(2)); 
+
 % objective = -x(2);
-objective = -x;
+objective = [c1f; c2f];
+
+% objective = -x(2);
+% objective = -x;
 
 SOLVE = 1;
 REC = 1;

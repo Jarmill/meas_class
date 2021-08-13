@@ -29,16 +29,23 @@ lsupp.disturb = w^2 <= wmax^2;
 f = [x(2); -x(1) + ((0.5*w+1)/3).* x(1).^3 - x(2)];
 objective = -x(2);
 
-loc = location(1, lsupp, f, objective);
+loc = location(lsupp, f, objective, 1);
 smp = struct('x', @() sphere_sample(1, 2)'*R0 + C0, ...
              'w', @() wmax * (2*rand() -1 ));
 
-LS = loc_sampler(loc, smp);
+LS = sampler_uncertain(loc, smp);
 LS.mu = 0.2;
 
 % traj = LS.sample_traj(0, C0, [], 10);
 
 osm = LS.sample_traj_multi(10, 5);
+
+figure(44)
+clf
+hold on 
+for i = 1:length(osm)
+    plot(osm{i}.x(:, 1), osm{i}.x(:, 2));
+end
 
 % PM = peak_manager(lsupp, f, objective);
 
