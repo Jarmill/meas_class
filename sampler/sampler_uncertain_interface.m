@@ -35,7 +35,7 @@ classdef sampler_uncertain_interface < handle
             end
         end
         
-                function [out_sim_multi] = sample_traj_multi(obj, N, Tmax)
+    function [out_sim_multi] = sample_traj_multi(obj, N, Tmax)
             if nargin < 3
                 Tmax = obj.loc.Tmax;
             end

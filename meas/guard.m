@@ -107,9 +107,9 @@ classdef guard < meas_base
         function supp_out = supp_eval(obj, t, x)
             %is (t, x) in the support of the guard?
             if obj.TIME_INDEP
-                supp_out =  all(eval(obj.supp, obj.get_vars(), x));            
+                supp_out =  all(eval(obj.supp, obj.get_vars(), x, 1e-6));            
             else
-                supp_out =  all(eval(obj.supp, obj.get_vars(), [t; x]));            
+                supp_out =  all(eval(obj.supp, obj.get_vars(), [t; x], 1e-6));            
             end
         end
         

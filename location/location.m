@@ -8,10 +8,7 @@ classdef location < location_interface
 %         vars = struct('t', [], 'x', []);
 %         vars = struct('t', [], 'x', [], 'th', [], 'w', [], 'b', []);
         varnames = {'t','x','th','w','b'};
-        
 
-        
-           
     end
        
     methods
@@ -214,7 +211,23 @@ classdef location < location_interface
              
         end        
         
+        function v_out = v_eval(obj, t, x)
+            %evaluate v
+            if obj.TIME_INDEP
+                v_out = eval(obj.dual.v, obj.get_vars_end(), x);
+            else
+                v_out = eval(obj.dual.v, obj.get_vars_end(), [t; x]);
+            end
+        end
         
+        function obj_out = obj_eval(obj, t, x)
+            %evaluate objective
+            if obj.TIME_INDEP
+                obj_out = eval(obj.objective, obj.get_vars_end(), x);
+            else
+                obj_out = eval(obj.objective, obj.get_vars_end(), [t; x]);
+            end
+        end
         
         %% Sampling
         

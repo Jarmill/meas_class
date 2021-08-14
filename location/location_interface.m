@@ -1,4 +1,4 @@
-classdef location_interface
+classdef location_interface < handle    
     %LOCATION_INTERFACE A location (space) of a dynamical system
     %   includes descriptions of the space as well as measures
     

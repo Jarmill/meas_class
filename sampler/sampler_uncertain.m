@@ -5,7 +5,7 @@ classdef sampler_uncertain < sampler_uncertain_interface
     properties        
         %expected time to switch systems (continuous time)
         %exponential distribution with parameter mu
-        mu = 1;
+        mu = 0.2;
         
     end
     

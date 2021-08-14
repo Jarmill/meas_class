@@ -1,4 +1,4 @@
-classdef manager_interface
+classdef manager_interface < handle
     %MANAGER_INTERFACE A generic class to pose the LMI in measures.
     %   applications include variations on peak estimation
     %   Detailed explanation goes here
