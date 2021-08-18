@@ -42,7 +42,7 @@ classdef sampler_hy
                 
                 loc_curr = obj.loc_smp{id_curr}.loc;
                 
-                if loc_curr.dual.solved
+                if ~isempty(loc_curr.dual) && loc_curr.dual.solved
                     out_sim_curr.v = eval(loc_curr.dual.v, loc_curr.get_vars_end, [out_sim_curr.t/Tmax, out_sim_curr.x]');
                     out_sim_curr.nonneg = eval([loc_curr.dual.nn; loc_curr.sys{1}.dual.nn], loc_curr.get_vars, [out_sim_curr.t/Tmax, out_sim_curr.x, out_sim_curr.w]');
                 end

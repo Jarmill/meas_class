@@ -186,7 +186,7 @@ classdef peak_manager_hy < manager_interface
             rec_ineq = dual_rec{2};
             
             
-            gamma = rec_eq(end);
+            gamma = rec_eq(sum(len_dual.v)+1);
            
                         
             
@@ -254,281 +254,281 @@ classdef peak_manager_hy < manager_interface
         
         %% Sampler
         
-        function [supp_loc] = supp_loc_eval(obj, t, x)
-            %find the support evaluation of locations and guards at index
-            
-            
-            N_loc = length(obj.loc);
-            supp_loc = zeros(N_loc, 1);
+%         function [supp_loc] = supp_loc_eval(obj, t, x)
+%             %find the support evaluation of locations and guards at index
+%             
+%             
+%             N_loc = length(obj.loc);
+%             supp_loc = zeros(N_loc, 1);
+% %             supp_loc(1) = obj.loc{id}.supp_eval(t, x);
+%             for j = 1:N_loc
+%                 supp_loc(j) = obj.loc{j}.supp_eval(t, x);
+%             end
+%         end
+%         
+%         function [supp_loc, supp_g, possible_g] = supp_g_eval(obj, t, x, id)
+%             %find the support evaluation of locations and guards at index
+%             %(or source index) id
+%             
+%             g_mask = find(cellfun(@(g) g.src.id == id, obj.guards));
+%             N_guards = length(g_mask);
+%             
+%             supp_g = zeros(N_guards, 1);
+%             possible_g = [];
 %             supp_loc(1) = obj.loc{id}.supp_eval(t, x);
-            for j = 1:N_loc
-                supp_loc(j) = obj.loc{j}.supp_eval(t, x);
-            end
-        end
-        
-        function [supp_loc, supp_g, possible_g] = supp_g_eval(obj, t, x, id)
-            %find the support evaluation of locations and guards at index
-            %(or source index) id
-            
-            g_mask = find(cellfun(@(g) g.src.id == id, obj.guards));
-            N_guards = length(g_mask);
-            
-            supp_g = zeros(N_guards, 1);
-            possible_g = [];
-            supp_loc(1) = obj.loc{id}.supp_eval(t, x);
-            for j = 1:N_guards
-                supp_g(j) = obj.guards{g_mask(j)}.supp_eval(t, x);
-                if supp_g(j)
-                    possible_g = [possible_g; obj.guards{g_mask(j)}.id];
-                end
-            end
-        end
-        
-        function [event_eval, terminal, direction] = loc_event(obj, t, x, id)                   
-            %event function for @ode15 or other solver
-            Npt = size(x, 2);
-            event_eval = zeros(Npt);
-            
-            
-            for i = 1:Npt
-                tcurr = t(:, i);               
-                xcurr = x(:, i);               
-                
-                %assume that the guards on are on the boundary of the
-                %region
-%                 [supp_loc, supp_g] = supp_g_eval(obj, tcurr, xcurr, id);
-%                 event_eval(i) = supp_loc && all(~supp_g);
-                event_eval = obj.loc{id}.supp_eval(t, x);
-            end
-                        
-            %stop integrating when the system falls outside support
-            
-            terminal = 1;
-%             direction = 0;                        
-            direction = -1;   % negative direction
-        end 
-       
-        
-        function out_sim = sample_traj(obj, t0, x0, id0, Tmax)
-            %SAMPLE_TRAJ Sample a single trajectory starting at (t0, x0) in
-            %a specific location. Track the trajectory as it moves through
-            %locations
-            %
-            %OUTPUT:
-            %out_sim is a struct holding the simulation output: time,
-            %state, objective, and nonnegative functions from the dual
-            %solution of SDP.
-            
-            t_curr = t0;
-            x_curr = x0;
-            id_curr = id0;
-%             out_sim = struct('sim', {}, 'jump', {});
-            out_sim.sim = {};
-            out_sim.jump = {};
-            zeno_count = zeros(length(obj.guards), 1);
-            while (t_curr < Tmax)
-                %sample within location
-                loc_curr = obj.loc{id_curr};
-                event_curr = @(t, x) obj.loc_event(t, x, id_curr); 
-                out_sim_curr = loc_curr.sample_traj_loc(t_curr, x_curr, Tmax, event_curr);
-                
-                %store trajectory in location
-                out_sim.sim{end+1} = out_sim_curr;
-                
-                t_curr = out_sim_curr.t(end);
-                x_curr = out_sim_curr.x(end, :)';
-                
-                %figure out jump
-                [~, supp_g, poss_g] = obj.supp_g_eval(t_curr, x_curr, id_curr);
-                if any(supp_g)
-                    %there is a jump to another guard
-                    %xcurr is in the support of some guard
-                    
-                    %returns the first valid guard
-%                     [~, g_id_new] = max(supp_g); %maybe random?
-                    g_id_new = poss_g(1);
-                    
-                    zeno_count(g_id_new) = zeno_count(g_id_new) + 1;
-                    g_new = obj.guards{g_id_new};
-                    Rx = g_new.reset_eval(x_curr);
-                    
-                    %track the nonnegativity  
-                    jump_curr = struct('t', t_curr, 'x', x_curr, 'x_jump', ...
-                        Rx, 'guard', g_id_new);
-                    
-                    if g_new.dual.solved
-                        %TODO
-                        jump_curr.nonneg = g_new.nonneg(t_curr, x_curr);
-                    end
-                    out_sim.jump{end+1} = jump_curr;
-                    
-                    
-                    %complete the jump
-                    id_curr = g_new.dest.id;
-                    x_curr = Rx;
-                    
-                    if zeno_count(g_id_new) > g_new.zeno_cap
-                        %maximum number of jumps is exceeded
-                        break
-                    end
-                else
-                    %no available guards to jump to
-                    %outside support, end of trajectory
-                    break
-                end
-            end
-            out_sim.t_end = t_curr;
-        end
-        
-        function [out_sim_multi, out_sim_deal] = sample_traj_multi(obj, init_sampler, Tmax)
-            %SAMPLE_TRAJ_MULTI sample multiple trajectories through the 
-            %sample_traj. 
-            %
-            %Input: 
-            %init_sampler is a struct
-            %   N:      number of points to sample
-            %   init:   (id, x) initial location/state funciton
-            %
-            %OR
-            %   x:      state (array)
-            %   loc:    location (scalar or array)
-            %
-            %OUTPUT:
-            %   out_sim_multi:  a cell indexed by trajectory sample with
-            %                   fields corresponding to trajectory
-            %                   locations and guard jumps
-            %   out_sim_deal:   A struct with fields 'locations', and
-            %                   'guards' containing all trajectories in
-            %                   each domain
-            
-            if nargin < 2
-                Tmax = 1;
-                parallel = 0;
-            elseif nargin < 3
-                parallel = 0;
-            end
-            
-            if isnumeric(init_sampler.init)
-                %given sample points
-                N = size(init_sampler.init, 2);
-                out_sim_multi = cell(N, 1);               
-                %parallel code requires splitting off separate objects
-                for i = 1:N                    
-                    x0 = init_sampler.init(2:end, i);
-                    if length(init_sampler.loc) == 1
-                        id0 = init_sampler.loc;
-                    else
-                        id0 = init_sampler.loc(i);
-                    end
-                    out_sim_multi{i} = obj.sample_traj(0, x0, id0, Tmax);
-                end
-                
-            else
-                %random sample.
-                N = init_sampler.N;
-                out_sim_multi = cell(N, 1);
-                for i = 1:N                    
-                    [id0, x0] = init_sampler.init();                    
-                    out_sim_multi{i} = obj.sample_traj(0, x0, id0, Tmax);
-                end
-            end
-            
-            %now `deal' the samples into locations and fields            
-            %matlab hackery to make cells of empty cells
-            out_sim_deal = struct;
-            out_sim_deal.locations = cellfun(@num2cell, cell(length(obj.loc), 1), 'UniformOutput', false);
-            out_sim_deal.guards = cellfun(@num2cell, cell(length(obj.guards), 1), 'UniformOutput', false);
-            
-            
-            
-            for i = 1:N %every sampled trajectory
-                for j = 1:length(out_sim_multi{i}.sim) 
-                    %every location the trajectory visits
-                    traj_curr = out_sim_multi{i}.sim{j};
-                    loc_id = traj_curr.id;
-                    out_sim_deal.locations{loc_id} = [out_sim_deal.locations{loc_id}; traj_curr];
-                end                
-                
-                for j = 1:length(out_sim_multi{i}.jump)
-                    jump_curr = out_sim_multi{i}.jump{j};
-                    jump_id = jump_curr.guard;
-                    out_sim_deal.guards{jump_id} = [out_sim_deal.guards{jump_id}; jump_curr];
-                end
-            end
-        end
-        
-        
-        %% Plotter        
-        function plot_nonneg_jump(obj,osd)
-            % PLOT_NONNEG plot the nonnegative functions along the
-            % sampled trajectories
-            %osd: out_sim_deal
-            
-            FS_title = 14;
-            FS_axis = 12;
-            
-            Ng = length(obj.guards);
-            Nl = length(obj.loc);
-            
-            figure(20)
-            clf
-            %plot the guards
-            for g = 1:Ng
-                subplot(Ng, 1, g)
-                hold on
-                xlabel('time', 'FontSize', FS_axis)
-                id_src  = obj.guards{g}.src.id;
-                id_dest = obj.guards{g}.dest.id;
-                ylabel(['$v_', num2str(id_src), '(x) - v_', num2str(id_dest), ...
-                        '(R_', num2str(g),'(x))$'],'interpreter', 'latex', 'FontSize', FS_axis)
-                title(['Guard ', num2str(obj.guards{g}.id), ' Transition'], 'FontSize', FS_title)
-
-                for j = 1:length(osd.guards{g})
-                        j_curr = osd.guards{g}{j};            
-                        stem(j_curr.t, j_curr.nonneg, 'c') 
-                end
-            end
-
-        end
-        
-        function plot_nonneg_loc(obj,osd)
-                    FS_title = 14;
-            FS_axis = 12;
-            
-            Ng = length(obj.guards);
-            Nl = length(obj.loc);
-            %% Locations
-            %setup
-            nonneg_title = {'Initial Value', 'Decrease in Value', 'Cost Proxy'};
-            for i = 1:Nl
-                figure(50+i)
-                clf
-                ax_loc = obj.nonneg_axis_str(i);
-                for k = 1:3
-                    subplot(3, 1, k)
-                    hold on
-                    xlabel('time', 'FontSize', FS_axis)
-                    title(['Loc ', num2str(i), ' ', nonneg_title{k}], 'FontSize', FS_title)
-                    ylabel(ax_loc{k}, 'interpreter', 'latex', 'FontSize', FS_axis);
-                end            
-                for j = 1:length(osd.locations{i})
-                    traj_curr = osd.locations{i}{j};
-                    for k = 1:3            
-                        subplot(3, 1, k)
-                        plot(traj_curr.t, traj_curr.nonneg(:, k), 'c')
-                    end
-                end   
-            end
-        end
-
-
-    function str_out = nonneg_axis_str(obj,loc)
-        locs = num2str(loc);
-        str_out{1} = ['$\gamma - v_', locs, '(x)$'];
-        str_out{2} = ['$-L_{f', locs, '} v_', locs, '(x)$'];
-        str_out{3} = ['$v_', locs, '(x) - p_', locs, '(x)$' ];
-    end
-            
+%             for j = 1:N_guards
+%                 supp_g(j) = obj.guards{g_mask(j)}.supp_eval(t, x);
+%                 if supp_g(j)
+%                     possible_g = [possible_g; obj.guards{g_mask(j)}.id];
+%                 end
+%             end
+%         end
+%         
+%         function [event_eval, terminal, direction] = loc_event(obj, t, x, id)                   
+%             %event function for @ode15 or other solver
+%             Npt = size(x, 2);
+%             event_eval = zeros(Npt);
+%             
+%             
+%             for i = 1:Npt
+%                 tcurr = t(:, i);               
+%                 xcurr = x(:, i);               
+%                 
+%                 %assume that the guards on are on the boundary of the
+%                 %region
+% %                 [supp_loc, supp_g] = supp_g_eval(obj, tcurr, xcurr, id);
+% %                 event_eval(i) = supp_loc && all(~supp_g);
+%                 event_eval = obj.loc{id}.supp_eval(t, x);
+%             end
+%                         
+%             %stop integrating when the system falls outside support
+%             
+%             terminal = 1;
+% %             direction = 0;                        
+%             direction = -1;   % negative direction
+%         end 
+%        
+%         
+%         function out_sim = sample_traj(obj, t0, x0, id0, Tmax)
+%             %SAMPLE_TRAJ Sample a single trajectory starting at (t0, x0) in
+%             %a specific location. Track the trajectory as it moves through
+%             %locations
+%             %
+%             %OUTPUT:
+%             %out_sim is a struct holding the simulation output: time,
+%             %state, objective, and nonnegative functions from the dual
+%             %solution of SDP.
+%             
+%             t_curr = t0;
+%             x_curr = x0;
+%             id_curr = id0;
+% %             out_sim = struct('sim', {}, 'jump', {});
+%             out_sim.sim = {};
+%             out_sim.jump = {};
+%             zeno_count = zeros(length(obj.guards), 1);
+%             while (t_curr < Tmax)
+%                 %sample within location
+%                 loc_curr = obj.loc{id_curr};
+%                 event_curr = @(t, x) obj.loc_event(t, x, id_curr); 
+%                 out_sim_curr = loc_curr.sample_traj_loc(t_curr, x_curr, Tmax, event_curr);
+%                 
+%                 %store trajectory in location
+%                 out_sim.sim{end+1} = out_sim_curr;
+%                 
+%                 t_curr = out_sim_curr.t(end);
+%                 x_curr = out_sim_curr.x(end, :)';
+%                 
+%                 %figure out jump
+%                 [~, supp_g, poss_g] = obj.supp_g_eval(t_curr, x_curr, id_curr);
+%                 if any(supp_g)
+%                     %there is a jump to another guard
+%                     %xcurr is in the support of some guard
+%                     
+%                     %returns the first valid guard
+% %                     [~, g_id_new] = max(supp_g); %maybe random?
+%                     g_id_new = poss_g(1);
+%                     
+%                     zeno_count(g_id_new) = zeno_count(g_id_new) + 1;
+%                     g_new = obj.guards{g_id_new};
+%                     Rx = g_new.reset_eval(x_curr);
+%                     
+%                     %track the nonnegativity  
+%                     jump_curr = struct('t', t_curr, 'x', x_curr, 'x_jump', ...
+%                         Rx, 'guard', g_id_new);
+%                     
+%                     if g_new.dual.solved
+%                         %TODO
+%                         jump_curr.nonneg = g_new.nonneg(t_curr, x_curr);
+%                     end
+%                     out_sim.jump{end+1} = jump_curr;
+%                     
+%                     
+%                     %complete the jump
+%                     id_curr = g_new.dest.id;
+%                     x_curr = Rx;
+%                     
+%                     if zeno_count(g_id_new) > g_new.zeno_cap
+%                         %maximum number of jumps is exceeded
+%                         break
+%                     end
+%                 else
+%                     %no available guards to jump to
+%                     %outside support, end of trajectory
+%                     break
+%                 end
+%             end
+%             out_sim.t_end = t_curr;
+%         end
+%         
+%         function [out_sim_multi, out_sim_deal] = sample_traj_multi(obj, init_sampler, Tmax)
+%             %SAMPLE_TRAJ_MULTI sample multiple trajectories through the 
+%             %sample_traj. 
+%             %
+%             %Input: 
+%             %init_sampler is a struct
+%             %   N:      number of points to sample
+%             %   init:   (id, x) initial location/state funciton
+%             %
+%             %OR
+%             %   x:      state (array)
+%             %   loc:    location (scalar or array)
+%             %
+%             %OUTPUT:
+%             %   out_sim_multi:  a cell indexed by trajectory sample with
+%             %                   fields corresponding to trajectory
+%             %                   locations and guard jumps
+%             %   out_sim_deal:   A struct with fields 'locations', and
+%             %                   'guards' containing all trajectories in
+%             %                   each domain
+%             
+%             if nargin < 2
+%                 Tmax = 1;
+%                 parallel = 0;
+%             elseif nargin < 3
+%                 parallel = 0;
+%             end
+%             
+%             if isnumeric(init_sampler.init)
+%                 %given sample points
+%                 N = size(init_sampler.init, 2);
+%                 out_sim_multi = cell(N, 1);               
+%                 %parallel code requires splitting off separate objects
+%                 for i = 1:N                    
+%                     x0 = init_sampler.init(2:end, i);
+%                     if length(init_sampler.loc) == 1
+%                         id0 = init_sampler.loc;
+%                     else
+%                         id0 = init_sampler.loc(i);
+%                     end
+%                     out_sim_multi{i} = obj.sample_traj(0, x0, id0, Tmax);
+%                 end
+%                 
+%             else
+%                 %random sample.
+%                 N = init_sampler.N;
+%                 out_sim_multi = cell(N, 1);
+%                 for i = 1:N                    
+%                     [id0, x0] = init_sampler.init();                    
+%                     out_sim_multi{i} = obj.sample_traj(0, x0, id0, Tmax);
+%                 end
+%             end
+%             
+%             %now `deal' the samples into locations and fields            
+%             %matlab hackery to make cells of empty cells
+%             out_sim_deal = struct;
+%             out_sim_deal.locations = cellfun(@num2cell, cell(length(obj.loc), 1), 'UniformOutput', false);
+%             out_sim_deal.guards = cellfun(@num2cell, cell(length(obj.guards), 1), 'UniformOutput', false);
+%             
+%             
+%             
+%             for i = 1:N %every sampled trajectory
+%                 for j = 1:length(out_sim_multi{i}.sim) 
+%                     %every location the trajectory visits
+%                     traj_curr = out_sim_multi{i}.sim{j};
+%                     loc_id = traj_curr.id;
+%                     out_sim_deal.locations{loc_id} = [out_sim_deal.locations{loc_id}; traj_curr];
+%                 end                
+%                 
+%                 for j = 1:length(out_sim_multi{i}.jump)
+%                     jump_curr = out_sim_multi{i}.jump{j};
+%                     jump_id = jump_curr.guard;
+%                     out_sim_deal.guards{jump_id} = [out_sim_deal.guards{jump_id}; jump_curr];
+%                 end
+%             end
+%         end
+%         
+%         
+%         %% Plotter        
+%         function plot_nonneg_jump(obj,osd)
+%             % PLOT_NONNEG plot the nonnegative functions along the
+%             % sampled trajectories
+%             %osd: out_sim_deal
+%             
+%             FS_title = 14;
+%             FS_axis = 12;
+%             
+%             Ng = length(obj.guards);
+%             Nl = length(obj.loc);
+%             
+%             figure(20)
+%             clf
+%             %plot the guards
+%             for g = 1:Ng
+%                 subplot(Ng, 1, g)
+%                 hold on
+%                 xlabel('time', 'FontSize', FS_axis)
+%                 id_src  = obj.guards{g}.src.id;
+%                 id_dest = obj.guards{g}.dest.id;
+%                 ylabel(['$v_', num2str(id_src), '(x) - v_', num2str(id_dest), ...
+%                         '(R_', num2str(g),'(x))$'],'interpreter', 'latex', 'FontSize', FS_axis)
+%                 title(['Guard ', num2str(obj.guards{g}.id), ' Transition'], 'FontSize', FS_title)
+% 
+%                 for j = 1:length(osd.guards{g})
+%                         j_curr = osd.guards{g}{j};            
+%                         stem(j_curr.t, j_curr.nonneg, 'c') 
+%                 end
+%             end
+% 
+%         end
+%         
+%         function plot_nonneg_loc(obj,osd)
+%                     FS_title = 14;
+%             FS_axis = 12;
+%             
+%             Ng = length(obj.guards);
+%             Nl = length(obj.loc);
+%             %% Locations
+%             %setup
+%             nonneg_title = {'Initial Value', 'Decrease in Value', 'Cost Proxy'};
+%             for i = 1:Nl
+%                 figure(50+i)
+%                 clf
+%                 ax_loc = obj.nonneg_axis_str(i);
+%                 for k = 1:3
+%                     subplot(3, 1, k)
+%                     hold on
+%                     xlabel('time', 'FontSize', FS_axis)
+%                     title(['Loc ', num2str(i), ' ', nonneg_title{k}], 'FontSize', FS_title)
+%                     ylabel(ax_loc{k}, 'interpreter', 'latex', 'FontSize', FS_axis);
+%                 end            
+%                 for j = 1:length(osd.locations{i})
+%                     traj_curr = osd.locations{i}{j};
+%                     for k = 1:3            
+%                         subplot(3, 1, k)
+%                         plot(traj_curr.t, traj_curr.nonneg(:, k), 'c')
+%                     end
+%                 end   
+%             end
+%         end
+% 
+% 
+%     function str_out = nonneg_axis_str(obj,loc)
+%         locs = num2str(loc);
+%         str_out{1} = ['$\gamma - v_', locs, '(x)$'];
+%         str_out{2} = ['$-L_{f', locs, '} v_', locs, '(x)$'];
+%         str_out{3} = ['$v_', locs, '(x) - p_', locs, '(x)$' ];
+%     end
+%             
             
         
         
