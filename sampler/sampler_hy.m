@@ -36,10 +36,16 @@ classdef sampler_hy
             zeno_count = zeros(length(obj.guards), 1);
             while (t_curr < Tmax)
                 %sample within location
-%                 loc_curr = obj.loc{id_curr};
-%                 event_curr = @(t, x) obj.loc_event(t, x, id_curr); 
+%                   event_curr = @(t, x) obj.loc_event(t, x, id_curr); 
 %                 out_sim_curr = loc_curr.sample_traj_loc(t_curr, x_curr, Tmax, event_curr);
                 out_sim_curr = obj.loc_smp{id_curr}.sample_traj(t_curr, x_curr, [], Tmax);
+                
+                loc_curr = obj.loc_smp{id_curr}.loc;
+                
+                if loc_curr.dual.solved
+                    out_sim_curr.v = eval(loc_curr.dual.v, loc_curr.get_vars_end, [out_sim_curr.t/Tmax, out_sim_curr.x]');
+                    out_sim_curr.nonneg = eval([loc_curr.dual.nn; loc_curr.sys{1}.dual.nn], loc_curr.get_vars, [out_sim_curr.t/Tmax, out_sim_curr.x, out_sim_curr.w]');
+                end
                 %store trajectory in location
                 out_sim.sim{end+1} = out_sim_curr;
                 

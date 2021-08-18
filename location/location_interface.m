@@ -51,7 +51,7 @@ classdef location_interface < handle
             obj.id = id;
             
             %dynamics
-            if ~iscell(obj.f)
+            if ~iscell(f)
                 obj.f = {f};
             else
                 obj.f = f;            
@@ -71,8 +71,12 @@ classdef location_interface < handle
             end
             
             %supports
-            if ~iscell(obj.supp.X_sys)
-                obj.supp.X_sys = {obj.supp.X_sys};         
+            if ~iscell(obj.supp.X_sys)                
+                obj.supp.X_sys = cell(Nsys, 1);
+                for i = 1:Nsys
+                    obj.supp.X_sys{i} = loc_supp.X_sys;
+                end
+%                 obj.supp.X_sys = {obj.supp.X_sys};         
             end
             
             obj.supp_X_ = obj.supp.X;
