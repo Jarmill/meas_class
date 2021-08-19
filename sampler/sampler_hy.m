@@ -72,7 +72,7 @@ classdef sampler_hy
                     
                     if g_new.dual.solved
                         %TODO
-                        jump_curr.nonneg = g_new.nonneg(t_curr, x_curr);
+                        jump_curr.nonneg = g_new.nonneg(t_curr/Tmax, x_curr);
                     end
                     out_sim.jump{end+1} = jump_curr;
                     

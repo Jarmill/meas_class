@@ -20,6 +20,8 @@ classdef subsystem_interface < handle
         supp;       %support of measures
         supp_sys;   %support of only x
         
+        Tmax;
+        
         meas_type = @meas_base;
     end
     
@@ -51,6 +53,8 @@ classdef subsystem_interface < handle
                 obj.meas_type = meas_type;
             end
             
+            obj.Tmax = loc_supp.Tmax;
+            
             %identification and names
             obj.loc_id = loc_id;
             obj.sys_id = sys_id;
@@ -64,12 +68,26 @@ classdef subsystem_interface < handle
             obj.vars = loc_supp.vars;
             obj.supp_sys= loc_supp.get_X_sys_ind(sys_id);
             obj.supp_sys_ = obj.supp_sys;
-            obj.supp = loc_supp.supp_sys_pack(obj.supp_sys);           
-            %occupation measure definition
-            obj.f = f;
+            
+            %the sampler function call for dynamics
             obj.f_ = f; 
             
+            %the occupation measure dynamics, which may be multiplied by
+            %Tmax if the system is time-dependent
+
+            obj.f = f;                                    
+            if ~loc_supp.TIME_INDEP && loc_supp.SCALE_TIME
+                %scale for time if time is a variable                
+                obj.f = loc_supp.Tmax*obj.f;
+                loc_supp.Tmax = 1;
+            end
             
+            obj.supp = loc_supp.supp_sys_pack(obj.supp_sys);           
+            %occupation measure definition
+            
+            
+
+
             obj.meas_occ = obj.meas_def(obj.varnames, [obj.prefix,'_occ'], obj.supp);
 %             obj.meas_occ  = obj.meas_def('occ');          
                                                                                 

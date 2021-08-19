@@ -58,17 +58,7 @@ classdef location_interface < handle
             end
             
             %systems (occupation measures)
-            Nsys = length(obj.f);
-
-            
-            if ~obj.supp.TIME_INDEP && obj.supp.SCALE_TIME
-                %scale for time if time is a variable
-                Tmax = obj.supp.Tmax;
-                for i = 1:Nsys
-                    obj.f{i} = obj.f{i}*Tmax;
-                end
-                obj.supp.Tmax = 1;
-            end
+            Nsys = length(obj.f);         
             
             %supports
             if ~iscell(obj.supp.X_sys)                

@@ -109,7 +109,10 @@ classdef guard < meas_base
             if obj.TIME_INDEP
                 supp_out =  all(eval(obj.supp, obj.get_vars(), x, 1e-6));            
             else
-                supp_out =  all(eval(obj.supp, obj.get_vars(), [t; x], 1e-6));            
+                %hack here, define time-active guards later
+                %as in guards supported only in certain times
+                supp_out =  all(eval(obj.supp, obj.get_vars(), [0; x], 1e-6));            
+%                 supp_out =  all(eval(obj.supp, obj.get_vars(), [t; x], 1e-6));            
             end
         end
         

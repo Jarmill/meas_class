@@ -11,7 +11,8 @@ classdef subsystem < subsystem_interface
         varnames = {'t', 'x', 'th', 'w'}; %names of variables in measure
         
         f_box = [];     %affine decomposition of dynamics 
-                        %{no input, input 1, input 2, ...}                                                       
+                        %{no input, input 1, input 2, ...}     
+                        
     end
 
     
@@ -162,7 +163,7 @@ classdef subsystem < subsystem_interface
             obj.dual.Lv = diff(v, obj.vars.x)*obj.f;
             obj.dual.zeta = zeta;
             if ~isempty(obj.vars.t)
-                obj.dual.Lv = obj.dual.Lv + diff(v, obj.vars.t);
+                obj.dual.Lv = obj.Tmax*obj.dual.Lv + diff(v, obj.vars.t);
             end
             
             %process the box dual variables           
@@ -177,7 +178,7 @@ classdef subsystem < subsystem_interface
                     Lv_box(i) = diff(v, obj.vars.x)*obj.f_box(:, i);
                     
                     if i==1 && ~isempty(obj.vars.t)
-                        Lv_box(i) = Lv_box(i) + diff(v, obj.vars.t);
+                        Lv_box(i) = obj.Tmax*Lv_box(i) + diff(v, obj.vars.t);
                     end
                 end
                 obj.dual.Lv_box = Lv_box;
