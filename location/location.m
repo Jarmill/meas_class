@@ -208,6 +208,12 @@ classdef location < location_interface
                 nn_term = obj.dual.v - obj.dual.beta'*obj.objective;
             end
             obj.dual.nn = [nn_init; nn_term];
+            
+            %all nonnegative functions in location
+            %include nn from all subsystems
+            for i = 1:length(obj.sys)
+                obj.dual.nn = [obj.dual.nn; obj.sys{i}.dual.nn];
+            end
              
         end        
         
@@ -217,6 +223,15 @@ classdef location < location_interface
                 v_out = eval(obj.dual.v, obj.get_vars_end(), x);
             else
                 v_out = eval(obj.dual.v, obj.get_vars_end(), [t; x]);
+            end
+        end
+        
+        function nn_out = nonneg_eval(obj, t, x)
+            %evaluate v
+            if obj.TIME_INDEP
+                nn_out = eval(obj.dual.nn, obj.get_vars_end(), x);
+            else
+                nn_out = eval(obj.dual.nn, obj.get_vars_end(), [t; x]);
             end
         end
         

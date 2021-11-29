@@ -11,7 +11,7 @@ classdef guard < meas_base
         reset_identity = 0;
         
         zeno_cap = 4; %maximum number of transitions along guard
-        dual = struct('zeno', 0, 'solved', 0);  %dual variable to zeno constraints
+        dual = struct('zeno', 0, 'solved', 0, 'nn', []);  %dual variable to zeno constraints
         
     end
     
@@ -122,22 +122,43 @@ classdef guard < meas_base
             
             %check the sign convention
             %v should decrease along the jump
-            if obj.reset_identity
-                Rx = x;
-            else
-                Rx = eval(obj.reset, obj.vars.x, x);
-            end
-            
-            vsrc = obj.src.v_eval(t, x);
-            vdest = obj.dest.v_eval(t, Rx);
-            
-            nn_out = vsrc - vdest - obj.dual.zeno;
+%             if obj.reset_identity
+%                 Rx = x;
+%             else
+%                 Rx = eval(obj.reset, obj.vars.x, x);
+%             end
+%             
+%             vsrc = obj.src.v_eval(t, x);
+%             vdest = obj.dest.v_eval(t, Rx);
+%             
+%             nn_out = vsrc - vdest + obj.dual.zeno;
+            nn_out = eval(obj.dual.nn, [obj.src.vars.t; obj.src.vars.x], [t; x]);
             
         end
         
         function obj = dual_process(obj, zeno_dual)
-            %store the dual variable
-            obj.dual = struct('zeno', zeno_dual, 'solved', 1);
+            
+            %extract the nonnegative function associated with this guard
+            
+            v_src = obj.src.dual.v;
+            v_dest = obj.dest.dual.v;
+            
+%             Rv_dest = subs(\
+            if obj.reset_identity
+                %trivial reset map (local measures)
+                Rv_dest = v_dest;
+            else
+                %reset only involves x, t stays the same
+                Rv_dest= subs(v_dest, obj.dest.vars.x, [obj.reset]);
+%                 mom_out = mom(Rv);
+            end
+            
+            
+            
+            nn = v_src - Rv_dest + obj.dual.zeno;
+            
+            %store the dual variable                                    
+            obj.dual = struct('zeno', zeno_dual, 'solved', 1, 'nn', nn);
         end
                 
         

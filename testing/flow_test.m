@@ -27,8 +27,8 @@ lsupp.Tmax = 5;
 
 %dynamics
 f = [x(2); -x(1) + (1/3).* x(1).^3 - x(2)];
-% objective = -x(2);
-objective = -x;
+objective = -x(2);
+% objective = -x;
 
 SOLVE = 1;
 REC = 1;
@@ -38,8 +38,9 @@ PM = peak_manager(lsupp, f, objective);
 %generate constraints
 order = 4;
 d = 2*order;
-sol = PM.run(order, lsupp.Tmax);
+[sol, PM] = PM.run(order, lsupp.Tmax);
 peak_val = sol.obj_rec
+[opt, rr, mm] = PM.recover()
 % [obj_p, mom_con, supp_con] = PM.peak_cons(d);
 % sol = PM.peak_solve(obj_p, mom_con,supp_con);
 % end
