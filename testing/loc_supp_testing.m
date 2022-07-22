@@ -56,3 +56,5 @@ qsupp = loc_support(varsq, lsupp);
 
 f = -x + 1;
 sys = subsystem(lsupp, f, 2);
+
+loc = location(lsupp, f, x(1), 1);

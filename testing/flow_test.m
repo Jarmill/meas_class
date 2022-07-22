@@ -15,10 +15,13 @@ R0 = 0.4;
 
 X0 = ((x(1)-C0(1))^2 + (x(2)-C0(2))^2 <= R0^2);
 
+X0 = C0;
+
 %% location support 
 
 lsupp = loc_support(vars);
-lsupp = lsupp.set_box(4);
+% lsupp = lsupp.set_box(4);
+lsupp = lsupp.set_box([-1, 3; -1.5, 2]);
 lsupp.X_init = X0;
 lsupp.Tmax = 10;
 %% testing peak estimation
@@ -33,9 +36,10 @@ REC = 1;
 PM = peak_manager(lsupp, f, objective);
 
 %generate constraints
-order = 3;
+order = 3; %starting X0=C0, order 2: 0.5723, order 3: 0.5532
 d = 2*order;
 sol = PM.run(order, 10);
+disp(sol.obj_rec)
 % [obj_p, mom_con, supp_con] = PM.peak_cons(d);
 % sol = PM.peak_solve(obj_p, mom_con,supp_con);
 % end

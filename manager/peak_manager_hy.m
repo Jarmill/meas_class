@@ -31,7 +31,7 @@ classdef peak_manager_hy < manager_interface
         
         %% Formulating and solving program
         
-        function [objective, mom_con, supp_con, len_liou] = cons(obj,d, Tmax)
+        function [objective, mom_con, supp_con, len_dual] = cons(obj,d, Tmax)
             %CONS formulate support and measure constraints for peak
             %program at degree d
             %Input:
@@ -60,7 +60,7 @@ classdef peak_manager_hy < manager_interface
                 supp_con = [supp_con; loc_curr.supp_con()];
 
                 %find moment constraints of current location
-                [obj_curr, obj_con_curr] = loc_curr.objective_con(d);                                
+                [obj_curr, obj_con_curr] = loc_curr.objective_con();                                
                 
                 if ~isempty(obj_curr)
                     objective = objective + obj_curr;
@@ -70,12 +70,12 @@ classdef peak_manager_hy < manager_interface
                 liou_con{i} = loc_curr.liou_con(d);  
                                  
                 %initial measure has mass 1
-                if ~isempty(loc_curr.meas_init)
-                    mass_init_sum = mass_init_sum + loc_curr.meas_init.mass();
+                if ~isempty(loc_curr.init)
+                    mass_init_sum = mass_init_sum + loc_curr.mass_init();
                 end
                 
                 if isempty(loc_curr.vars.t)
-                    mass_occ_sum = mass_occ_sum + loc_curr.meas_occ.mass();
+                    mass_occ_sum = mass_occ_sum + loc_curr.mass_occ();
                 end
             end
             
@@ -112,7 +112,7 @@ classdef peak_manager_hy < manager_interface
             
             %TIME-INDEPENDENT mass of occupation measures are less than
             %Tmax. Only when t is not included as a variable;
-            if isnumeric(mass_occ_sum) && (nargin > 2)
+            if isnumeric(mass_occ_sum) %&& (nargin > 2)
                 
                 %TODO: access Tmax
                 mass_occ_con = [];
@@ -138,6 +138,7 @@ classdef peak_manager_hy < manager_interface
                 
             len_liou = length(liou_con_all);
             
+            len_dual = [];
                         
             mom_con = [liou_con_all; mass_init_con; mass_occ_con; obj_con_all; zeno_con];
 
@@ -163,7 +164,7 @@ classdef peak_manager_hy < manager_interface
             
         end
         
-        function obj = dual_process(obj, order, dual_rec, gamma)
+        function obj = dual_process(obj, d, dual_rec, gamma)
             %DUAL_PROCESS dispatch the dual variables from solution to
             %locations and measures, turn the variables into nonnegative
             %functions along trajectories
@@ -172,52 +173,52 @@ classdef peak_manager_hy < manager_interface
             %beta: coefficients of cost (if able)
             %alpha: dual of zeno gaps
             
-            rec_eq = dual_rec{1};
-            rec_ineq = dual_rec{2};
-            
-            if nargin < 3
-                gamma = rec_eq(end);
-            end
-                        
-            
-            liou_offset = 0;
-            cost_con_offset = 0;
-            for i = 1:length(obj.loc)
-                
-                loc_curr = obj.loc{i};
-                
-                %liouville
-                %time independent
-                if isempty(loc_curr.vars.t)
-                    nvar_curr = length(loc_curr.vars.x);
-                else
-                    nvar_curr = length(loc_curr.vars.x)+1;
-                end
-                liou_len_curr = nchoosek(nvar_curr + 2*order, 2*order);
-                
-                v_coeff = rec_eq((1:liou_len_curr) + liou_offset);
-                                
-                liou_offset = liou_offset + liou_len_curr;
-                
-                %maximin cost duals
-                n_obj = length(loc_curr.objective);
-                if n_obj > 1
-                    beta_curr = rec_ineq((1:n_obj) + cost_con_offset);
-                    cost_con_offset = cost_con_offset + n_obj;
-                elseif isempty(loc_curr.objective)
-                    beta_curr = [];
-                else
-                    beta_curr = 1;
-                end
-                
-                loc_curr.dual_process(order, v_coeff, beta_curr, gamma);
-                
-            end            
-            
-            for i = 1:length(obj.guards)
-%                 obj.guards{i}.zeno_dual = rec_ineq(cost_con_offset + i);
-                obj.guards{i}.dual_process(rec_ineq(cost_con_offset + i));
-            end                        
+%             rec_eq = dual_rec{1};
+%             rec_ineq = dual_rec{2};
+%             
+%             if nargin < 3
+%                 gamma = rec_eq(end);
+%             end
+%                         
+%             
+%             liou_offset = 0;
+%             cost_con_offset = 0;
+%             for i = 1:length(obj.loc)
+%                 
+%                 loc_curr = obj.loc{i};
+%                 
+%                 %liouville
+%                 %time independent
+%                 if isempty(loc_curr.vars.t)
+%                     nvar_curr = length(loc_curr.vars.x);
+%                 else
+%                     nvar_curr = length(loc_curr.vars.x)+1;
+%                 end
+%                 liou_len_curr = nchoosek(nvar_curr + d, d);
+%                 
+%                 v_coeff = rec_eq((1:liou_len_curr) + liou_offset);
+%                                 
+%                 liou_offset = liou_offset + liou_len_curr;
+%                 
+%                 %maximin cost duals
+%                 n_obj = length(loc_curr.objective);
+%                 if n_obj > 1
+%                     beta_curr = rec_ineq((1:n_obj) + cost_con_offset);
+%                     cost_con_offset = cost_con_offset + n_obj;
+%                 elseif isempty(loc_curr.objective)
+%                     beta_curr = [];
+%                 else
+%                     beta_curr = 1;
+%                 end
+%                 
+%                 loc_curr.dual_process(d, v_coeff, beta_curr, gamma);
+%                 
+%             end            
+%             
+%             for i = 1:length(obj.guards)
+% %                 obj.guards{i}.zeno_dual = rec_ineq(cost_con_offset + i);
+%                 obj.guards{i}.dual_process(rec_ineq(cost_con_offset + i));
+%             end                        
         end
         
 

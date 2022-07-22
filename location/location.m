@@ -8,10 +8,7 @@ classdef location < location_interface
 %         vars = struct('t', [], 'x', []);
 %         vars = struct('t', [], 'x', [], 'th', [], 'w', [], 'b', []);
         varnames = {'t','x','th','w','b'};
-        
-
-        
-           
+                          
     end
        
     methods

@@ -51,7 +51,7 @@ classdef location_interface
             obj.id = id;
             
             %dynamics
-            if ~iscell(obj.f)
+            if ~iscell(f)
                 obj.f = {f};
             else
                 obj.f = f;            
@@ -61,7 +61,7 @@ classdef location_interface
             Nsys = length(obj.f);
 
             
-            if ~obj.supp.TIME_INDEP && obj.supp.SCALE_TIME
+            if ~obj.supp.TIME_INDEP % && obj.supp.SCALE_TIME
                 %scale for time if time is a variable
                 Tmax = obj.supp.Tmax;
                 for i = 1:Nsys
