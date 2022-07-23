@@ -95,7 +95,7 @@ classdef location < location_interface
             len_out = obj.len_dual.v + sum(obj.len_dual.zeta);
         end
         
-        function [obj_max, obj_con] = objective_con(obj, objective)
+        function [obj_max, obj_con_ineq, obj_con_eq] = objective_con(obj, objective)
             %OBJECTIVE_CON deal with the objective, which may be maximin
                                     
             %TODO: This should maybe go in the manager
@@ -107,7 +107,8 @@ classdef location < location_interface
                 objective = obj.objective;
             end
                                     
-            obj_con = [];
+            obj_con_eq = [];
+            obj_con_ineq = [];
             
             var_end = obj.var_index(obj.vars, {'t', 'x', 'th'});
             if isempty(objective)
@@ -124,7 +125,8 @@ classdef location < location_interface
                 obj.cost_q = q;
                 
                 obj_max = mom(q);
-                obj_con = [mass(q) == 1; (mom(q) <= mom(obj_subs));];
+                obj_con_eq = [mass(q) == 1];
+                obj_con_ineq= (mom(q) <= obj_subs);
             end            
         end
                
