@@ -47,7 +47,7 @@ classdef manager_interface
             [sol.status,sol.obj_rec, ~,sol.dual_rec]= msol(P);        
         end  
         
-        function sol = run(obj, order, Tmax)
+        function [sol, obj] = run(obj, order, Tmax)
             %RUN the main call, the full peak program at the target order
             
             if nargin < 3
