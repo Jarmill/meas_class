@@ -216,23 +216,31 @@ classdef location < location_interface
             end
         end
 
-%         function nn_out = nonneg(obj, t, x, th, w)
-%             %nonnegative functions at this location
-%             
-%             %initial measure
-%             if isempty(obj.init)
-%                 nn_init = 0;
+
+       function v_out = v_eval(obj, t, x, th)
+           if nargin < 4
+               th = [];
+           end
+            %evaluate v
+%             if obj.TIME_INDEP
+%                 v_out = eval(obj.dual.v, obj.get_vars(), x);
 %             else
-%                 nn_init = obj.dual.gamma - obj.dual.v;
+                v_out = eval(obj.dual.v, obj.get_vars(), [t'; x'; th']);
 %             end
-%             
-%             %terminal measure
-%             if isempty(obj.term)
-%                 nn_term = 0;
-%             else
-%                 nn_term = obj.dual.v - obj.dual.beta'*obj.objective;
-%             end
-%             
+        end
+        
+
+        function nn_loc = nonneg(obj, t, x, th, w)
+            %nonnegative functions at this location
+            
+            %initial measure
+            nn_loc = eval(obj.dual.nn, obj.get_vars_end(), [t'; x'; w']);
+
+            for i = 1:length(obj.sys)
+                nn_curr = eval(obj.sys{i}.dual.nn, obj.get_vars(), [t'; x'; th'; w']);
+                nn_loc = [nn_loc; nn_curr];
+            end
+        end
 %             %occupation measure
 %             %TODO: replace with subsystem call
 %             

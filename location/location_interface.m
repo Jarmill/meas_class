@@ -1,4 +1,4 @@
-classdef location_interface
+classdef location_interface < handle
     %LOCATION_INTERFACE A location (space) of a dynamical system
     %   includes descriptions of the space as well as measures
     
@@ -242,7 +242,7 @@ classdef location_interface
             if obj.TIME_INDEP
                 obj_out = eval(obj.objective, obj.vars.x, x);
             else
-                obj_out = eval(obj.objective, [obj.vars.t; obj.vars.x], [t; x]);
+                obj_out = eval(obj.objective, [obj.vars.t; obj.vars.x], [t'; x']);
             end
         end
         
@@ -253,6 +253,15 @@ classdef location_interface
 %             else
                 supp_out =  all(eval(obj.supp_X_, obj.vars.x, x));
 %             end
+        end
+
+        function x_proj = supp_proj(obj, x)
+            %project a point x onto the support set
+            %used to avoid/throw under rug numerical difficulties in
+            %sampling routines
+
+            %should be overloaded in child classes
+            x_proj = x;
         end
         
         function [event_eval, terminal, direction] = supp_event(obj, t, x)

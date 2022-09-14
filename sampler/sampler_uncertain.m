@@ -141,7 +141,7 @@ classdef sampler_uncertain < sampler_uncertain_interface
             out_sim.w = w_accum;
             out_sim.b = b_accum;          
             
-            out_sim.objective = obj.loc.obj_eval(out_sim.t', out_sim.x')';
+%             out_sim.objective = obj.loc.obj_eval(out_sim.t', out_sim.x')';
             out_sim.id = obj.loc.id;                                                                    
         end
         
