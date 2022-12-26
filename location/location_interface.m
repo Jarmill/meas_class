@@ -78,7 +78,7 @@ classdef location_interface < handle
             obj.supp_X_ = obj.supp.X;
             
             %initial measures
-            if ~isempty(obj.supp.X_init)
+            if ~isempty(obj.supp.X_init) || ~isempty(obj.supp.mom_init)
 %                 obj.init = obj.meas_def_end('0', obj.supp.supp_init());
                 obj.init = meas_init(obj.supp, obj.id);
             end            

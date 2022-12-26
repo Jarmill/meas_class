@@ -43,6 +43,9 @@ classdef peak_manager < manager_interface
             
             %mass of initial measure sums to one
             mass_init_con = (obj.loc.mass_init() - 1 == 0);
+            if islogical(mass_init_con)
+                mass_init_con = [];
+            end
             
             if obj.loc.supp.TIME_INDEP
                 mass_occ_con = (obj.loc.mass_occ() <= Tmax);
@@ -77,7 +80,9 @@ classdef peak_manager < manager_interface
             %liouville
             %time independent
 %             v_coeff = rec_eq(1:len_liou);
-                        
+                 
+
+            
             gamma = rec_eq(end);
             
             %counters for constraints (for multiple locations)

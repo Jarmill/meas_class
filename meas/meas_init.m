@@ -2,6 +2,12 @@ classdef meas_init < meas_collection
     %MEAS_INIT A container of initial measures
     %   realizes unions of initial measures for a multi-part X_init
     
+    properties
+        mom_init; %a function handle to compute moments of the initial 
+        % distribution. This is useful when the initial measure is
+        % lebesgue-distributed instead of freely chosen
+    end
+
     methods
         
         %% constructor
@@ -17,9 +23,12 @@ classdef meas_init < meas_collection
             varnames = {'t','x','th'};
             obj@meas_collection(loc_supp, varnames);            
             obj.meas_type = @meas_uncertain;
+            obj.mom_init = loc_supp.mom_init;
             
             %process initial region
             X0 = loc_supp.get_X_init();
+
+
             
             %N0: number of initial regions
             if isnumeric(X0)
@@ -112,6 +121,33 @@ classdef meas_init < meas_collection
                 corner = [];
             end
         end
+
+
+        function mass_out = mass(obj)
+            %MASS return the mass (moment of 1) of the measure           
+            if isempty(obj.mom_init)
+                mass_out= mass@meas_collection(obj);
+            else
+                mass_out=obj.mom_init(0);
+            end
+        end 
+
+
+
+        function mmmon_out = mom_monom(obj, dmin, dmax)
+            %MOM_MONOM moments of monomials
+            if nargin < 3
+                dmax = dmin;
+                dmin = 0;
+            end
+            
+            if isempty(obj.mom_init)
+                mmmon_out = mom_monom@meas_collection(obj, dmin, dmax);
+            else
+                mmmon_out = obj.mom_init(dmax);
+            end
+        end     
+
         
     end
 end

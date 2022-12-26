@@ -29,6 +29,11 @@ classdef loc_support
         %state initial support
         X_init = [];
         
+        %handle to allow for the moments of the initial distribution to be
+        %specified. is a function mom_init(d) = moments up to degree d at
+        %the specified variable order.
+        mom_init = [];
+        
         %state terminal support
         X_term = [];
         
